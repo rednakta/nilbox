@@ -1,0 +1,49 @@
+[package]
+name = "nilbox-blocklist"
+description = "Bloom filter domain blocklist for nilbox"
+version.workspace = true
+edition.workspace = true
+license = "MIT"
+
+[dependencies]
+anyhow = "1.0"
+sha2 = "0.10"
+ed25519-dalek = { version = "2", features = ["pkcs8", "pem"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tracing = "0.1"
+
+[dependencies.reqwest]
+version = "0.12"
+default-features = false
+features = ["rustls-tls", "json"]
+optional = true
+
+[dependencies.tokio]
+version = "1"
+features = ["full"]
+optional = true
+
+[dependencies.clap]
+version = "4"
+features = ["derive"]
+optional = true
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+features = ["env-filter"]
+optional = true
+
+[features]
+default = []
+dev-store = []
+cli = ["dep:reqwest", "dep:tokio", "dep:clap", "dep:tracing-subscriber"]
+
+[[bin]]
+name = "nilbox-blocklist-build"
+path = "src/bin/build_blocklist.rs"
+required-features = ["cli"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+tempfile = "3"

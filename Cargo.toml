@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/nilbox-blocklist",
+    "crates/nilbox-core",
+    "crates/nilbox-mcp-bridge",
+    "apps/nilbox/src-tauri",
+    "vm-agent",
+]
+
+[workspace.package]
+version = "0.1.8"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true

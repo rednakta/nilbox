@@ -1,0 +1,20 @@
+{
+  "name": "playwright-mcp-hello",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs",
+    "test-cdp": "node test-cdp.mjs",
+    "test-cdp:host": "CDP_ENDPOINT=http://localhost:9222 node test-cdp.mjs",
+    "chrome": "open -a 'Google Chrome' --args --remote-debugging-port=9222",
+    "hn-title": "node hn-title.mjs",
+    "mcp-server": "npx @playwright/mcp@latest --cdp-endpoint ws://localhost:9222"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "@playwright/mcp": "latest",
+    "@modelcontextprotocol/sdk": "latest",
+    "ws": "^8.0.0"
+  }
+}

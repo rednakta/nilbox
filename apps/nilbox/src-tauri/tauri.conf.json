@@ -1,0 +1,49 @@
+{
+  "productName": "nilbox",
+  "version": "0.2.0",
+  "identifier": "run.nilbox.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "security": {
+      "csp": null
+    },
+    "windows": []
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "externalBin": [
+      "binaries/nilbox-mcp-bridge",
+      "binaries/nilbox-vmm",
+      "binaries/nilbox-blocklist-build"
+    ],
+    "macOS": {
+      "entitlements": "./entitlements.plist",
+      "hardenedRuntime": true
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "endpoints": [
+        "https://store.nilbox.run/api/app/update/{{target}}-{{arch}}/{{current_version}}"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE0RkJGQkZFQTkzQ0M5N0YKUldSL3lUeXAvdnY3RlA3alB5Z0dBNmJSYjVad1QyM1NLeURqQlhLb3NLVE9BdE5pa25OWXRyUVIK"
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "id": "oauth-openai",
+  "version": 1,
+  "title": "Setup OpanAI",
+  "steps": [
+    {
+      "id": "step-1",
+      "selector": "[data-guide-id='nav-mappings'] span:nth-child(2)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "Mappings Menu",
+        "description": "Select the Mappings Menu",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "[data-guide-id='nav-mappings'] span:nth-child(2)"
+      },
+      "skipIf": null
+    },
+    {
+      "id": "step-2",
+      "selector": "div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > button:nth-child(1)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "OAuth",
+        "description": "Select OAuth side menu",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > button:nth-child(1)"
+      },
+      "skipIf": null
+    },
+    {
+      "id": "step-3",
+      "selector": "div:nth-child(2) > div:nth-child(5) > div:nth-child(1) > input:nth-child(1)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "OpenAI",
+        "description": "Select OpenAI",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "div:nth-child(2) > div:nth-child(5) > div:nth-child(1) > input:nth-child(1)"
+      },
+      "skipIf": null
+    },
+    {
+      "id": "step-4",
+      "selector": "div:nth-child(2) > div:nth-child(5) > div:nth-child(1) > input:nth-child(1)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "Step",
+        "description": "",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "input",
+        "selector": "div:nth-child(2) > div:nth-child(5) > div:nth-child(1) > input:nth-child(1)",
+        "value": "on"
+      },
+      "skipIf": null
+    }
+  ]
+}

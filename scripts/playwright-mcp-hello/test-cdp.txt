@@ -1,0 +1,19 @@
+테스트 방법:
+
+  ┌───────────┬───────────────────────┬─────────────────────────────────┐
+  │   환경    │        명령어         │          CDP_ENDPOINT           │
+  ├───────────┼───────────────────────┼─────────────────────────────────┤
+  │ Host 직접 │ npm run test-cdp:host │ http://localhost:9222           │
+  ├───────────┼───────────────────────┼─────────────────────────────────┤
+  │ VM 내부   │ npm run test-cdp      │ http://cdp.nilbox:9222 (기본값) │
+  └───────────┴───────────────────────┴─────────────────────────────────┘
+
+  테스트 흐름:
+  1. GET /json/version → webSocketDebuggerUrl 확인 (VM에서는 cdp.nilbox 포함 여부 검증)
+  2. GET /json/list → 열린 탭 목록
+  3. 응답에서 받은 webSocketDebuggerUrl로 WebSocket 연결
+  4. Browser.getVersion CDP 명령
+  5. Target.createTarget → example.com 탭 생성
+  6. Target.closeTarget → 탭 닫기
+
+  VM에서 실행 시 webSocketDebuggerUrl에 127.0.0.1 대신 cdp.nilbox가 포함되어야 cdp_rewriter가 정상 동작

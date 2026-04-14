@@ -1,0 +1,40 @@
+{
+  "bundle": {
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": null,
+        "sidebarImage": "icons/sidebar_image_164x314.bmp"
+      },
+      "wix": {
+        "dialogImagePath": null,
+        "bannerImagePath": null
+      }
+    },
+    "externalBin": [
+      "binaries/windows/qemu-system-x86_64",
+      "binaries/nilbox-mcp-bridge"
+    ],
+    "resources": {
+      "binaries/windows/lib/libglib-2.0-0.dll": "lib/libglib-2.0-0.dll",
+      "binaries/windows/lib/libgio-2.0-0.dll": "lib/libgio-2.0-0.dll",
+      "binaries/windows/lib/libgobject-2.0-0.dll": "lib/libgobject-2.0-0.dll",
+      "binaries/windows/lib/libgmodule-2.0-0.dll": "lib/libgmodule-2.0-0.dll",
+      "binaries/windows/lib/libintl-8.dll": "lib/libintl-8.dll",
+      "binaries/windows/lib/libffi-8.dll": "lib/libffi-8.dll",
+      "binaries/windows/lib/libpcre2-8-0.dll": "lib/libpcre2-8-0.dll",
+      "binaries/windows/lib/libpixman-1-0.dll": "lib/libpixman-1-0.dll",
+      "binaries/windows/lib/libwinpthread-1.dll": "lib/libwinpthread-1.dll",
+      "binaries/windows/lib/libbz2-1.dll": "lib/libbz2-1.dll",
+      "binaries/windows/lib/libiconv-2.dll": "lib/libiconv-2.dll",
+      "binaries/windows/lib/libncursesw6.dll": "lib/libncursesw6.dll",
+      "binaries/windows/lib/libzstd.dll": "lib/libzstd.dll",
+      "binaries/windows/lib/zlib1.dll": "lib/zlib1.dll",
+      "binaries/windows/lib/libgcc_s_seh-1.dll": "lib/libgcc_s_seh-1.dll",
+      "binaries/windows/bios-256k.bin": "bios-256k.bin",
+      "binaries/windows/kvmvapic.bin": "kvmvapic.bin",
+      "binaries/windows/vgabios-stdvga.bin": "vgabios-stdvga.bin",
+      "binaries/windows/linuxboot_dma.bin": "linuxboot_dma.bin"
+    }
+  }
+}

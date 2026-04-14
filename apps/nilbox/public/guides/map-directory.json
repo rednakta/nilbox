@@ -1,0 +1,37 @@
+{
+  "id": "map-directory",
+  "version": 1,
+  "title": "Connect Directory to VM",
+  "steps": [
+    {
+      "id": "step-1",
+      "selector": "[data-guide-id='nav-mappings'] span:nth-child(2)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "Mappings menu",
+        "description": "Select the Mappings menu",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "[data-guide-id='nav-mappings'] span:nth-child(2)"
+      },
+      "skipIf": null
+    },
+    {
+      "id": "step-2",
+      "selector": "div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > button:nth-child(6)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "Directory Mapping",
+        "description": "Select your directory",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > button:nth-child(6)"
+      },
+      "skipIf": null
+    }
+  ]
+}

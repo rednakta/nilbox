@@ -1,0 +1,22 @@
+{
+  "id": "goto-store",
+  "version": 1,
+  "title": "Install OpenClaw",
+  "steps": [
+    {
+      "id": "step-1",
+      "selector": "[data-guide-id='nav-store'] span:nth-child(2)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "Store menu",
+        "description": "Select the store menu",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "[data-guide-id='nav-store'] span:nth-child(2)"
+      },
+      "skipIf": null
+    }
+  ]
+}

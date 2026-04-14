@@ -1,0 +1,6 @@
+{
+  "browser": {
+    "cdpEndpoint": "ws://localhost:9222"
+  },
+  "capabilities": ["core", "tabs"]
+}

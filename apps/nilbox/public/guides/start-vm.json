@@ -1,0 +1,37 @@
+{
+  "id": "Start-vm",
+  "version": 1,
+  "title": "Start the vm",
+  "steps": [
+    {
+      "id": "step-1",
+      "selector": "[data-guide-id='nav-home']",
+      "navigateTo": null,
+      "bubble": {
+        "title": "Select Home",
+        "description": "Select Home Menu",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "[data-guide-id='nav-home']"
+      },
+      "skipIf": null
+    },
+    {
+      "id": "step-2",
+      "selector": "div:nth-child(1) > div:nth-child(2) > div:nth-child(3) > button:nth-child(1)",
+      "navigateTo": null,
+      "bubble": {
+        "title": "Start",
+        "description": "Press the start button",
+        "position": "auto"
+      },
+      "expectedAction": {
+        "type": "click",
+        "selector": "div:nth-child(1) > div:nth-child(2) > div:nth-child(3) > button:nth-child(1)"
+      },
+      "skipIf": null
+    }
+  ]
+}

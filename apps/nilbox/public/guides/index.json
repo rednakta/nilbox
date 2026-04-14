@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "Start-vm",
+      "title": { "en": "Start your VM", "ko": "VM 시작하기" },
+      "description": { "en": "Learn how to navigate to VM Manager and start a virtual machine.", "ko": "HOME 이동하여 가상 머신을 시작하는 방법을 알아봅니다." },
+      "estimatedMinutes": 1,
+      "tags": ["beginner"],
+      "file": "/guides/start-vm.json"
+    },
+    {
+      "id": "start-shell",
+      "title": { "en": "How to start linux shell", "ko": "리눅스 명령어 사용하기" },
+      "description": { "en": "Learn how to start a shell in your VM.", "ko": "VM에서 셸을 시작하는 방법을 배웁니다." },
+      "estimatedMinutes": 1,
+      "tags": ["beginner"],
+      "file": "/guides/start-shell.json"
+    },
+    {
+      "id": "oauth-openai",
+      "title": { "en": "Setup OpenAI oauth login", "ko": "OpenAI oauth 로그인 설정하기" },
+      "description": { "en": "Learn how to set up OpenAI oauth login.", "ko": "OpenAI oauth 로그인을 설정하는 방법을 배웁니다." },
+      "estimatedMinutes": 1,
+      "tags": ["beginner"],
+      "file": "/guides/oauth-openai.json"
+    },
+    {
+      "id": "Set-api-token",
+      "title": { "en": "How to add api token", "ko": "API 토큰 추가하기" },
+      "description": { "en": "Add api token to nilbox", "ko": "nilbox에 API 토큰 추가하기" },
+      "estimatedMinutes": 1,
+      "tags": ["beginner"],
+      "file": "/guides/Set-api-token.json"
+    },
+    {
+      "id": "map-directory",
+      "title": { "en": "How to map directory to VM", "ko": "디렉토리를 VM에 매핑하기" },
+      "description": { "en": "Learn how to map a directory to your VM.", "ko": "VM에 디렉토리를 매핑하는 방법을 배웁니다." },
+      "estimatedMinutes": 1,
+      "tags": ["beginner"],
+      "file": "/guides/map-directory.json"
+    },
+    {
+      "id": "goto-store",
+      "title": { "en": "How to go to the store", "ko": "스토리로 이동하기" },
+      "description": { "en": "Learn how to navigate to the store.", "ko": "스토리로 이동하는 방법을 배웁니다." },
+      "estimatedMinutes": 1,
+      "tags": ["beginner"],
+      "file": "/guides/goto-store.json"
+    }
+
+  ]
+}

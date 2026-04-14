@@ -1,0 +1,83 @@
+[package]
+name = "nilbox-core"
+description = "nilbox core library — Tauri-independent business logic"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+nilbox-blocklist = { path = "../nilbox-blocklist" }
+unicode-normalization = "0.1"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+async-trait = "0.1"
+uuid = { version = "1.0", features = ["v4"] }
+bytes = "1.0"
+futures = "0.3"
+
+# HTTP
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-manual-roots", "native-tls", "json", "stream", "gzip"] }
+flate2 = "1"
+brotli = "8"
+webpki-roots = "1.0"
+httparse = "1.10"
+url = "2"
+
+
+# VM install: archive decompression + SHA256 verification
+zip = { version = "2", features = ["deflate"] }
+sha2 = "0.10"
+
+# AWS SigV4 signing
+hmac = "0.12"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+# SSH
+russh = "0.57"
+rand = "0.8"
+base64 = "0.21"
+
+# SQLCipher-encrypted KeyStore
+rusqlite = { version = "0.31", features = ["bundled-sqlcipher-vendored-openssl"] }
+zeroize = { version = "1.8", features = ["derive"] }
+# keyring is used on Linux/Windows only; macOS uses Security framework directly
+
+# Rhai script engine for dynamic OAuth
+rhai = { version = "1", features = ["sync"] }
+
+# Ed25519 manifest signature verification
+ed25519-dalek = { version = "2", features = ["pkcs8"] }
+
+# Manifest encryption (symmetric AEAD, v3 envelope)
+aes-gcm = "0.10"
+
+# inspect TLS proxy (HTTPS CONNECT interception for whitelisted domains)
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+tokio-rustls = "0.26"
+rcgen = { version = "0.13", default-features = false, features = ["ring", "pem"] }
+
+[features]
+default = []
+dev-store = []
+
+[build-dependencies]
+cc = "1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# Security framework FFI (keychain read/write)
+security-framework-sys = "2"
+core-foundation-sys = "0.8"
+libc = "0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3.6", features = ["sync-secret-service", "crypto-rust"] }
+tokio-vsock = "0.5"
+libc = "0.2"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3.6", features = ["windows-native"] }
