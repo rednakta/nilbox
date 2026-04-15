@@ -11,48 +11,71 @@
 #
 # Environment variables:
 #   PLATFORM      - "linux" or "windows" (required)
-#   RELEASE_TAG   - GitHub release tag, defaults to "latest"
-#   GITHUB_REPO   - repository with pre-built binaries (default: nilbox-run/qemu-binaries)
+#   RELEASE_TAG   - GitHub release tag, e.g. "qemu-v10.2.0" (default: latest qemu-v* release)
+#   GITHUB_REPO   - repository with pre-built binaries (default: current repo via GITHUB_REPOSITORY,
+#                   or nilbox-run/nilbox as fallback)
 
 set -euo pipefail
 
 PLATFORM="${PLATFORM:-}"
-RELEASE_TAG="${1:-latest}"
-GITHUB_REPO="${GITHUB_REPO:-nilbox-run/qemu-binaries}"
+RELEASE_TAG="${1:-}"
+GITHUB_REPO="${GITHUB_REPO:-${GITHUB_REPOSITORY:-nilbox-run/nilbox}}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUT_DIR="$SCRIPT_DIR/../apps/nilbox/src-tauri/binaries"
+BINARIES_DIR="$SCRIPT_DIR/../apps/nilbox/src-tauri/binaries"
 
 if [ -z "$PLATFORM" ]; then
     echo "Error: PLATFORM environment variable must be set to 'linux' or 'windows'" >&2
     exit 1
 fi
 
-mkdir -p "$OUT_DIR"
+mkdir -p "$BINARIES_DIR"
 
-BASE_URL="https://github.com/$GITHUB_REPO/releases/$RELEASE_TAG/download"
+# Resolve release tag: if not given, find the latest qemu-v* release
+if [ -z "$RELEASE_TAG" ]; then
+    echo "==> Resolving latest qemu-v* release from $GITHUB_REPO ..."
+    RELEASE_TAG=$(curl -fsSL "https://api.github.com/repos/$GITHUB_REPO/releases" \
+        | grep '"tag_name"' \
+        | grep 'qemu-v' \
+        | head -1 \
+        | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')
+    if [ -z "$RELEASE_TAG" ]; then
+        echo "Error: Could not find a qemu-v* release in $GITHUB_REPO" >&2
+        exit 1
+    fi
+    echo "==> Using release: $RELEASE_TAG"
+fi
+
+BASE_URL="https://github.com/$GITHUB_REPO/releases/download/$RELEASE_TAG"
 
 case "$PLATFORM" in
     linux)
-        TARGET_TRIPLE="x86_64-unknown-linux-gnu"
-        ARTIFACT="qemu-system-x86_64-$TARGET_TRIPLE"
-        echo "==> Downloading QEMU for Linux ($RELEASE_TAG)..."
-        curl -L -o "$OUT_DIR/$ARTIFACT" "$BASE_URL/$ARTIFACT"
-        chmod +x "$OUT_DIR/$ARTIFACT"
-        echo "==> Saved: $OUT_DIR/$ARTIFACT"
+        ARCHIVE="qemu-linux.tar.gz"
+        echo "==> Downloading $ARCHIVE from $RELEASE_TAG ..."
+        curl -fsSL -o "$BINARIES_DIR/$ARCHIVE" "$BASE_URL/$ARCHIVE"
+
+        echo "==> Extracting to $BINARIES_DIR/ ..."
+        tar -xzf "$BINARIES_DIR/$ARCHIVE" -C "$BINARIES_DIR/"
+        rm "$BINARIES_DIR/$ARCHIVE"
+
+        BINARY="$BINARIES_DIR/linux/qemu-system-x86_64-x86_64-unknown-linux-gnu"
+        chmod +x "$BINARY"
+        echo "==> Binary:  $BINARY"
+        echo "==> BIOS:    $(ls "$BINARIES_DIR/linux/"*.bin 2>/dev/null | tr '\n' ' ')"
         ;;
     windows)
-        TARGET_TRIPLE="x86_64-pc-windows-msvc"
-        ARTIFACT_EXE="qemu-system-x86_64-$TARGET_TRIPLE.exe"
-        ARTIFACT_DLL="qemu-windows-lib.zip"
-        echo "==> Downloading QEMU for Windows ($RELEASE_TAG)..."
-        curl -L -o "$OUT_DIR/$ARTIFACT_EXE" "$BASE_URL/$ARTIFACT_EXE"
-        curl -L -o "$OUT_DIR/$ARTIFACT_DLL" "$BASE_URL/$ARTIFACT_DLL"
-        mkdir -p "$OUT_DIR/lib"
-        unzip -o "$OUT_DIR/$ARTIFACT_DLL" -d "$OUT_DIR/lib"
-        rm "$OUT_DIR/$ARTIFACT_DLL"
-        echo "==> Saved: $OUT_DIR/$ARTIFACT_EXE"
-        echo "==> DLLs:  $OUT_DIR/lib/"
+        ARCHIVE="qemu-windows.zip"
+        echo "==> Downloading $ARCHIVE from $RELEASE_TAG ..."
+        curl -fsSL -o "$BINARIES_DIR/$ARCHIVE" "$BASE_URL/$ARCHIVE"
+
+        echo "==> Extracting to $BINARIES_DIR/ ..."
+        unzip -o "$BINARIES_DIR/$ARCHIVE" -d "$BINARIES_DIR/"
+        rm "$BINARIES_DIR/$ARCHIVE"
+
+        EXE="$BINARIES_DIR/windows/qemu-system-x86_64-x86_64-pc-windows-msvc.exe"
+        echo "==> Exe:     $EXE"
+        echo "==> DLLs:    $(ls "$BINARIES_DIR/windows/lib/"*.dll 2>/dev/null | wc -l) files"
+        echo "==> BIOS:    $(ls "$BINARIES_DIR/windows/"*.bin 2>/dev/null | tr '\n' ' ')"
         ;;
     *)
         echo "Error: PLATFORM must be 'linux' or 'windows'" >&2

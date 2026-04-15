@@ -1,0 +1,157 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (c) 2026 nilbox
+#
+# Build QEMU binaries for Linux and Windows, then publish as a GitHub Release.
+#
+# Trigger: manual (workflow_dispatch) with a qemu_version input.
+# Creates a release tag: qemu-v{version}
+#
+# Release assets:
+#   qemu-linux.tar.gz  — binary + BIOS files for Linux x86_64
+#   qemu-windows.zip   — exe + BIOS files + runtime DLLs for Windows x86_64
+
+name: Build QEMU Binaries
+
+on:
+  workflow_dispatch:
+    inputs:
+      qemu_version:
+        description: "QEMU version to build (e.g. 10.2.0)"
+        required: true
+        default: "10.2.0"
+
+permissions:
+  contents: write
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Linux: static build inside Alpine container
+  # --------------------------------------------------------------------------
+  build-linux:
+    name: Build QEMU (Linux)
+    runs-on: ubuntu-22.04
+    container:
+      image: alpine:3.20
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          apk add --no-cache \
+            bash curl xz tar \
+            build-base ninja meson python3 pkg-config \
+            glib-static glib-dev \
+            pixman-dev \
+            zlib-static
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build QEMU (Linux static)
+        run: bash scripts/build-qemu-linux.sh "${{ inputs.qemu_version }}"
+
+      - name: Package Linux artifacts
+        run: |
+          BINARIES_DIR="apps/nilbox/src-tauri/binaries"
+          tar -czf qemu-linux.tar.gz -C "$BINARIES_DIR" linux/
+          echo "==> Archive: qemu-linux.tar.gz"
+          tar -tzvf qemu-linux.tar.gz
+
+      - name: Upload Linux archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-linux
+          path: qemu-linux.tar.gz
+          retention-days: 1
+
+  # --------------------------------------------------------------------------
+  # Windows: dynamic build using MSYS2 MinGW64
+  # --------------------------------------------------------------------------
+  build-windows:
+    name: Build QEMU (Windows)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 MinGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-glib2
+            mingw-w64-x86_64-pixman
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-meson
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-diffutils
+            curl
+            tar
+            unzip
+            zip
+
+      - name: Build QEMU (Windows)
+        shell: msys2 {0}
+        run: bash scripts/build-qemu-windows.sh "${{ inputs.qemu_version }}"
+
+      - name: Package Windows artifacts
+        shell: msys2 {0}
+        run: |
+          BINARIES_DIR="apps/nilbox/src-tauri/binaries"
+          cd "$BINARIES_DIR"
+          zip -r "../../../../qemu-windows.zip" windows/
+          cd -
+          echo "==> Archive: qemu-windows.zip"
+          unzip -l qemu-windows.zip
+
+      - name: Upload Windows archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-windows
+          path: qemu-windows.zip
+          retention-days: 1
+
+  # --------------------------------------------------------------------------
+  # Release: create GitHub Release and attach both archives
+  # --------------------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Download Linux archive
+        uses: actions/download-artifact@v4
+        with:
+          name: qemu-linux
+
+      - name: Download Windows archive
+        uses: actions/download-artifact@v4
+        with:
+          name: qemu-windows
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "qemu-v${{ inputs.qemu_version }}"
+          name: "QEMU ${{ inputs.qemu_version }} Binaries"
+          body: |
+            Pre-built QEMU ${{ inputs.qemu_version }} binaries for use with the nilbox Tauri app.
+
+            | Asset | Platform | Contents |
+            |-------|----------|----------|
+            | `qemu-linux.tar.gz` | Linux x86_64 | Static binary + BIOS/ROM files |
+            | `qemu-windows.zip` | Windows x86_64 | Exe + BIOS/ROM files + runtime DLLs |
+
+            **Usage** — download before `tauri build`:
+            ```bash
+            PLATFORM=linux  bash scripts/fetch-qemu-binaries.sh qemu-v${{ inputs.qemu_version }}
+            PLATFORM=windows bash scripts/fetch-qemu-binaries.sh qemu-v${{ inputs.qemu_version }}
+            ```
+          files: |
+            qemu-linux.tar.gz
+            qemu-windows.zip
+          make_latest: false
