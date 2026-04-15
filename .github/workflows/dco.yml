@@ -1,0 +1,12 @@
+name: DCO
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  dco:
+    name: DCO Sign-off Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: github/dco@v1
