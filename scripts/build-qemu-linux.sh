@@ -76,18 +76,18 @@ echo "==> Configuring QEMU ..."
     --disable-smartcard \
     --disable-fdt \
     --disable-gio \
+    --disable-tests \
     --prefix="$INSTALL_PREFIX"
 
-# Build
+# Build only the QEMU binary (skip tests to avoid static linking issues)
 JOBS=$(nproc 2>/dev/null || echo 4)
 echo "==> Building QEMU (-j$JOBS) ..."
-make -j"$JOBS"
-make install
+ninja -C build -j"$JOBS" qemu-system-x86_64
 
 cd "$SCRIPT_DIR"
 
-# Copy binary
-cp "$INSTALL_PREFIX/bin/qemu-system-x86_64" "$OUT_BIN"
+# Copy binary directly from build dir (no make install needed)
+cp "$QEMU_SRC/build/qemu-system-x86_64" "$OUT_BIN"
 chmod +x "$OUT_BIN"
 
 # Copy BIOS/ROM files required by QEMU at runtime

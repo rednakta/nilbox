@@ -75,10 +75,6 @@ fi
 
 cd "$QEMU_SRC"
 
-# QEMU's mkvenv runs in offline mode when python/wheels/ exists.
-# Download any missing wheels so offline install succeeds with newer Python (e.g. 3.14+).
-python -m pip download pycotap==1.3.1 --no-deps --no-cache-dir -d python/wheels/ 2>/dev/null || true
-
 # Ensure MSYS2 /usr/bin tools (diff, etc.) are visible to meson
 export PATH="/usr/bin:$PATH"
 
@@ -101,6 +97,7 @@ CC=gcc CXX=g++ ./configure \
     --disable-usb-redir \
     --disable-smartcard \
     --disable-fdt \
+    --disable-tests \
     --prefix="$INSTALL_PREFIX"
 
 # Build

@@ -41,7 +41,8 @@ jobs:
             build-base ninja meson python3 py3-pip pkgconf \
             glib-static glib-dev \
             pixman-dev \
-            zlib-static
+            zlib-static \
+            bzip2-dev bzip2-static
 
       - name: Checkout repository
         uses: actions/checkout@v4
