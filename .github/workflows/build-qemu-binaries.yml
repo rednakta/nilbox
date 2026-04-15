@@ -38,7 +38,7 @@ jobs:
         run: |
           apk add --no-cache \
             bash curl xz tar \
-            build-base ninja meson python3 pkg-config \
+            build-base ninja meson python3 pkgconf \
             glib-static glib-dev \
             pixman-dev \
             zlib-static
