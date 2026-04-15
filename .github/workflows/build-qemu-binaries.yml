@@ -37,8 +37,8 @@ jobs:
       - name: Install build dependencies
         run: |
           apk add --no-cache \
-            bash curl xz tar \
-            build-base ninja meson python3 pkgconf \
+            bash curl xz tar git \
+            build-base ninja meson python3 py3-pip pkgconf \
             glib-static glib-dev \
             pixman-dev \
             zlib-static
