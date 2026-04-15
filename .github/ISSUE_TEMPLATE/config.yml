@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/rednakta/nilbox/security/advisories/new
+    about: Please report security vulnerabilities via GitHub's private Security Advisory feature, not as a public issue.
