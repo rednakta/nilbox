@@ -19,6 +19,7 @@ scripts/config-temp/
 scripts/config.log
 scripts/qemu-*.tar.xz
 scripts/qemu-10.2.0/
+scripts/libslirp-v*.tar.gz
 
 # Blocklist binary
 blocklist.bin

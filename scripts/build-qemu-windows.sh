@@ -97,7 +97,6 @@ CC=gcc CXX=g++ ./configure \
     --disable-usb-redir \
     --disable-smartcard \
     --disable-fdt \
-    --disable-tests \
     --prefix="$INSTALL_PREFIX"
 
 # Build

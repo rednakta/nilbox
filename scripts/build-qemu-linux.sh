@@ -56,10 +56,49 @@ fi
 if [[ ! -d "$QEMU_SRC" ]]; then
     echo "==> Extracting $QEMU_TAR ..."
     cd "$SCRIPT_DIR"
-    tar -xf "$QEMU_TAR"
+    # Exclude ARM ROM sources and large test data not needed for x86_64 build.
+    # 2>/dev/null || true: suppresses utime errors on macOS Docker volume mounts
+    # (symlinks in roms/edk2 etc. cannot have timestamps set via overlayfs).
+    # File contents are extracted correctly regardless.
+    tar -xf "$QEMU_TAR" --no-same-owner \
+        --exclude='*/roms/u-boot' \
+        --exclude='*/roms/u-boot-sam460ex' \
+        --exclude='*/roms/skiboot' \
+        --exclude='*/tests/lcitool' \
+        2>/dev/null || true
 fi
 
 cd "$QEMU_SRC"
+
+# Allow git to operate in directories owned by a different user.
+# Required when building inside a Docker container with a host-mounted volume.
+git config --global --add safe.directory '*' 2>/dev/null || true
+
+# Pre-populate subprojects/slirp/ from a downloaded tarball so meson never
+# attempts a wrap-file network fetch (which fails silently in Alpine containers,
+# leaving an empty directory that causes "libslirp_dep not found").
+SLIRP_SUBDIR="$QEMU_SRC/subprojects/slirp"
+SLIRP_WRAP="$QEMU_SRC/subprojects/slirp.wrap"
+if [[ ! -f "$SLIRP_SUBDIR/meson.build" ]]; then
+    # Read the expected version from the wrap file; fall back to 4.7.0.
+    LIBSLIRP_VERSION=""
+    if [[ -f "$SLIRP_WRAP" ]]; then
+        LIBSLIRP_VERSION=$(grep -E 'version\s*=' "$SLIRP_WRAP" 2>/dev/null \
+                           | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+    fi
+    LIBSLIRP_VERSION="${LIBSLIRP_VERSION:-4.7.0}"
+    LIBSLIRP_TAR="$SCRIPT_DIR/libslirp-v${LIBSLIRP_VERSION}.tar.gz"
+    if [[ ! -f "$LIBSLIRP_TAR" ]]; then
+        echo "==> Downloading libslirp $LIBSLIRP_VERSION ..."
+        curl -fL -o "$LIBSLIRP_TAR" \
+            "https://gitlab.freedesktop.org/slirp/libslirp/-/archive/v${LIBSLIRP_VERSION}/libslirp-v${LIBSLIRP_VERSION}.tar.gz"
+    fi
+    echo "==> Injecting libslirp $LIBSLIRP_VERSION into subprojects/slirp/ ..."
+    mkdir -p "$SLIRP_SUBDIR"
+    tar -xf "$LIBSLIRP_TAR" --strip-components=1 --no-same-owner -C "$SLIRP_SUBDIR"
+    # Remove the wrap file so meson uses the directory we just populated.
+    rm -f "$SLIRP_WRAP"
+fi
 
 # Configure: static build, KVM only, no GUI
 echo "==> Configuring QEMU ..."
@@ -76,7 +115,8 @@ echo "==> Configuring QEMU ..."
     --disable-smartcard \
     --disable-fdt \
     --disable-gio \
-    --disable-tests \
+    --disable-curses \
+    -Ddefault_library=static \
     --prefix="$INSTALL_PREFIX"
 
 # Build only the QEMU binary (skip tests to avoid static linking issues)
