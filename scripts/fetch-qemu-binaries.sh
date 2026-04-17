@@ -19,7 +19,7 @@ set -euo pipefail
 
 PLATFORM="${PLATFORM:-}"
 RELEASE_TAG="${1:-}"
-GITHUB_REPO="${GITHUB_REPO:-${GITHUB_REPOSITORY:-nilbox-run/nilbox}}"
+GITHUB_REPO="${GITHUB_REPO:-${GITHUB_REPOSITORY:-rednakta/nilbox}}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BINARIES_DIR="$SCRIPT_DIR/../apps/nilbox/src-tauri/binaries"
