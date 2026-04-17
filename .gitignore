@@ -9,6 +9,7 @@ package-lock.json
 # Tauri build output
 apps/nilbox/dist/
 apps/nilbox/src-tauri/binaries/*
+apps/nilbox/src-tauri/gen/
 apps/nilbox/build-release.sh
 
 # Debian VM build artifacts
