@@ -119,14 +119,14 @@ jobs:
               2>/dev/null || true
           fi
 
-          # Inject pycotap wheel into QEMU's bundled offline wheels directory.
-          # QEMU configure detects python/wheels/ and sets offline mode unconditionally,
-          # passing --no-index --find-links=python/wheels/ to pip. The wheel must exist there.
-          echo "==> Downloading pycotap wheel ..."
-          python -m pip download pycotap==1.3.1 --no-deps --no-cache-dir \
-            -d "$QEMU_SRC/python/wheels/"
-          echo "==> Injected wheels:"
-          ls "$QEMU_SRC/python/wheels/" | grep pycotap
+          # QEMU 10.2.0 already ships pycotap-1.3.1 and meson-1.9.0 in python/wheels/.
+          # On Windows, mkvenv.py builds `file://D:/a/...` for --find-links, which pip
+          # treats as URL-with-authority `D:` and ignores — "no versions found" follows.
+          # Patch to use the plain path so pip reads the wheels directory correctly.
+          echo "==> Patching mkvenv.py file:// URL for Windows drive paths ..."
+          sed -i 's|f"file://{str(wheels_dir)}"|str(wheels_dir)|' \
+            "$QEMU_SRC/python/scripts/mkvenv.py"
+          grep -n 'find-links' "$QEMU_SRC/python/scripts/mkvenv.py" | head -2
 
       - name: Build QEMU (Windows)
         shell: msys2 {0}
