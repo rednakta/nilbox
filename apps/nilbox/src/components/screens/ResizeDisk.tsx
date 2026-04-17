@@ -41,7 +41,7 @@ export const ResizeDisk: React.FC<Props> = ({ vm, onNavigate }) => {
     const currentGb = Math.round(diskSizeBytes / Math.pow(1024, 3));
     const parsed = parseInt(newSizeGb, 10);
     if (isNaN(parsed) || parsed <= currentGb) {
-      setResizeError(t("resizeDisk.sizeError", { size: currentGb }));
+      setResizeError(t("resizeDisk.sizeError", { size: currentGb.toString() }));
       return;
     }
     setResizing(true);

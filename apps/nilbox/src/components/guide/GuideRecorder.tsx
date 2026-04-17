@@ -161,7 +161,7 @@ export const GuideRecorder: React.FC<Props> = ({ activeScreen, onClose }) => {
               <Circle size={8} fill="#ef4444" /> {t("guide.recordMode")}
             </span>
             <span style={{ color: "var(--fg-muted)" }}>
-              {t("guide.recordStepCount", { n: steps.length })}
+              {t("guide.recordStepCount", { n: steps.length.toString() })}
             </span>
             <button onClick={() => setRecording(false)} style={tbBtn()}>
               <Pause size={11} /> {t("guide.recordPause")}
@@ -175,7 +175,7 @@ export const GuideRecorder: React.FC<Props> = ({ activeScreen, onClose }) => {
             <span style={{ color: "var(--fg-muted)" }}>{t("guide.recordMode")}</span>
             {steps.length > 0 && (
               <span style={{ color: "var(--fg-muted)" }}>
-                {t("guide.recordStepCount", { n: steps.length })}
+                {t("guide.recordStepCount", { n: steps.length.toString() })}
               </span>
             )}
             <button onClick={() => { setRecording(true); prevScreenRef.current = activeScreen; }} style={tbBtn("var(--accent)")}>

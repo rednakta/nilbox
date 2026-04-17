@@ -40,7 +40,7 @@ const createTerminal = () =>
 
 export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onInstallUrlConsumed, verifyInstallUuid, onNavigate }) => {
   const { t } = useTranslation();
-  const [tabs, setTabs] = useState<TabInfo[]>([{ id: 1, connected: false, label: t("shell.defaultTabLabel", { n: 1 }) }]);
+  const [tabs, setTabs] = useState<TabInfo[]>([{ id: 1, connected: false, label: t("shell.defaultTabLabel", { n: "1" }) }]);
   const [activeTab, setActiveTab] = useState(1);
   const [connecting, setConnecting] = useState(false);
   const [envEntries, setEnvEntries] = useState<EnvVarEntry[]>([]);
@@ -198,7 +198,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
 
   const addTab = () => {
     const newId = Date.now();
-    setTabs((prev) => [...prev, { id: newId, connected: false, label: t("shell.defaultTabLabel", { n: prev.length + 1 }) }]);
+    setTabs((prev) => [...prev, { id: newId, connected: false, label: t("shell.defaultTabLabel", { n: (prev.length + 1).toString() }) }]);
     setActiveTab(newId);
   };
 
@@ -349,7 +349,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
       } else {
         termRefs.current.clear();
         const newId = Date.now();
-        setTabs([{ id: newId, connected: false, label: t("shell.defaultTabLabel", { n: 1 }) }]);
+        setTabs([{ id: newId, connected: false, label: t("shell.defaultTabLabel", { n: "1" }) }]);
         setActiveTab(newId);
       }
     };
@@ -434,7 +434,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
   useEffect(() => {
     if (!installUrl || !vmId) return;
     const newId = Date.now();
-    setTabs((prev) => [...prev, { id: newId, connected: false, label: t("shell.defaultTabLabel", { n: prev.length + 1 }) }]);
+    setTabs((prev) => [...prev, { id: newId, connected: false, label: t("shell.defaultTabLabel", { n: (prev.length + 1).toString() }) }]);
     setActiveTab(newId);
     getOrCreateTerm(newId);
     setInstallingTabIds((prev) => new Set(prev).add(newId));
