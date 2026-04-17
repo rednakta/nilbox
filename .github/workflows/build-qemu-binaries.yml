@@ -37,11 +37,12 @@ jobs:
       - name: Install build dependencies
         run: |
           apk add --no-cache \
-            bash curl xz tar \
-            build-base ninja meson python3 pkg-config \
+            bash curl xz tar git \
+            build-base ninja meson python3 pkgconf \
             glib-static glib-dev \
-            pixman-dev \
-            zlib-static
+            pixman-dev pixman-static \
+            zlib-static \
+            bzip2-dev bzip2-static
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -86,12 +87,46 @@ jobs:
             mingw-w64-x86_64-ninja
             mingw-w64-x86_64-meson
             mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-pip
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-diffutils
             curl
             tar
             unzip
             zip
+
+      - name: Pre-populate pycotap wheel for offline QEMU build
+        shell: msys2 {0}
+        run: |
+          cd scripts
+          QEMU_VERSION="${{ inputs.qemu_version }}"
+          QEMU_TAR="qemu-$QEMU_VERSION.tar.xz"
+          QEMU_SRC="qemu-$QEMU_VERSION"
+
+          # Download tarball — build script will reuse it (checks existence before downloading)
+          if [ ! -f "$QEMU_TAR" ]; then
+            echo "==> Downloading $QEMU_TAR ..."
+            curl -fL -o "$QEMU_TAR" "https://download.qemu.org/$QEMU_TAR"
+          fi
+
+          # Extract — build script will detect existing dir and skip re-extraction
+          if [ ! -d "$QEMU_SRC" ]; then
+            echo "==> Extracting $QEMU_TAR ..."
+            tar -xf "$QEMU_TAR" \
+              --exclude='*/roms/u-boot' \
+              --exclude='*/roms/u-boot-sam460ex' \
+              --exclude='*/subprojects/libvhost-user/include' \
+              2>/dev/null || true
+          fi
+
+          # QEMU 10.2.0 already ships pycotap-1.3.1 and meson-1.9.0 in python/wheels/.
+          # On Windows, mkvenv.py builds `file://D:/a/...` for --find-links, which pip
+          # treats as URL-with-authority `D:` and ignores — "no versions found" follows.
+          # Patch to use the plain path so pip reads the wheels directory correctly.
+          echo "==> Patching mkvenv.py file:// URL for Windows drive paths ..."
+          sed -i 's|f"file://{str(wheels_dir)}"|str(wheels_dir)|' \
+            "$QEMU_SRC/python/scripts/mkvenv.py"
+          grep -n 'find-links' "$QEMU_SRC/python/scripts/mkvenv.py" | head -2
 
       - name: Build QEMU (Windows)
         shell: msys2 {0}
