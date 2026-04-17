@@ -2124,7 +2124,7 @@ const App: React.FC = () => {
               </button>
             </div>
             <div style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center" }}>
-              {t("tokenMismatch.timeout", { seconds: tokenMismatchCountdown })}
+              {t("tokenMismatch.timeout", { seconds: tokenMismatchCountdown.toString() })}
             </div>
           </div>
         </>
@@ -2202,7 +2202,7 @@ const App: React.FC = () => {
               {t("diskWarning.title")}
             </div>
             <div style={{ fontSize: 12, color: "var(--fg-secondary)", marginBottom: 6 }}>
-              {t("diskWarning.currentSize", { size: diskSizeWarning.sizeGb })}
+              {t("diskWarning.currentSize", { size: diskSizeWarning.sizeGb.toString() })}
             </div>
             <div style={{ fontSize: 12, color: "var(--fg-secondary)", marginBottom: 20, lineHeight: 1.5 }}>
               {t("diskWarning.message")}
@@ -2258,9 +2258,9 @@ const App: React.FC = () => {
             </div>
             <div style={{ fontSize: 12, color: "var(--fg-secondary)", marginBottom: 20, lineHeight: 1.5 }}>
               {t("diskUsageWarning.message", {
-                pct: diskUsageWarning.usePct,
-                used: diskUsageWarning.usedGb,
-                total: diskUsageWarning.totalGb,
+                pct: diskUsageWarning.usePct.toString(),
+                used: diskUsageWarning.usedGb.toString(),
+                total: diskUsageWarning.totalGb.toString(),
               })}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>

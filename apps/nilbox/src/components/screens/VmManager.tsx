@@ -812,7 +812,7 @@ export const VmManager: React.FC<Props> = ({ vms, activeVm, onVmsChange, onNavig
               {t("diskWarning.title")}
             </div>
             <div style={{ fontSize: 12, color: "var(--fg-secondary)", marginBottom: 6 }}>
-              {t("diskWarning.currentSize", { size: diskSizeWarning.sizeGb })}
+              {t("diskWarning.currentSize", { size: diskSizeWarning.sizeGb.toString() })}
             </div>
             <div style={{ fontSize: 12, color: "var(--fg-secondary)", marginBottom: 20, lineHeight: 1.5 }}>
               {t("diskWarning.message")}

@@ -145,7 +145,7 @@ export const SpeechBubble: React.FC<Props> = ({
           </button>
         </div>
         <span style={{ fontSize: 10, color: "var(--fg-muted)" }}>
-          {t("guide.stepOf", { current: stepIndex + 1, total: totalSteps })}
+          {t("guide.stepOf", { current: (stepIndex + 1).toString(), total: totalSteps.toString() })}
         </span>
       </div>
     </div>
