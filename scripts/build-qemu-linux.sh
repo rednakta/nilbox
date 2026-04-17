@@ -96,8 +96,9 @@ if [[ ! -f "$SLIRP_SUBDIR/meson.build" ]]; then
     echo "==> Injecting libslirp $LIBSLIRP_VERSION into subprojects/slirp/ ..."
     mkdir -p "$SLIRP_SUBDIR"
     tar -xf "$LIBSLIRP_TAR" --strip-components=1 --no-same-owner -C "$SLIRP_SUBDIR"
-    # Remove the wrap file so meson uses the directory we just populated.
-    rm -f "$SLIRP_WRAP"
+    # Keep slirp.wrap — its [provide] stanza is what lets meson fall back from
+    # pkg-config to this subproject. Meson will not re-fetch because the
+    # directory is already populated.
 fi
 
 # Configure: static build, KVM only, no GUI
