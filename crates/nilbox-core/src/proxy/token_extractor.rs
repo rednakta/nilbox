@@ -75,6 +75,7 @@ pub fn extract_from_sse_chunks(chunks: &[Vec<u8>], provider: &LlmProvider) -> Op
         if let Ok(value) = serde_json::from_str::<serde_json::Value>(json_str) {
             let response_tokens = sum_token_paths(&value, resp_field);
             let request_tokens  = sum_token_paths(&value, req_field);
+
             if response_tokens > 0 || request_tokens > 0 {
                 let model = resolve_json_string(&value, mdl_field);
                 let total = request_tokens + response_tokens;
@@ -118,17 +119,23 @@ pub fn estimate_from_bytes_fallback(body_len: usize) -> TokenUsageData {
 
 // ── Helpers ──────────────────────────────────────────────────
 
-/// Sum token counts from a comma-separated list of JSON dot-paths.
+/// Pick the first non-zero value from a comma-separated list of JSON dot-paths.
 ///
-/// Example: `"usage.prompt_tokens,usage.completion_tokens"` → sum both fields.
+/// Comma-separated paths act as fallback alternatives, not a sum.
+/// Example: `"response.usage.output_tokens,usage.completion_tokens"` → try each
+/// path in order and return the first value > 0.
 fn sum_token_paths(value: &serde_json::Value, paths: &str) -> u32 {
     if paths.is_empty() {
         return 0;
     }
-    paths
-        .split(',')
-        .filter_map(|p| resolve_json_u32(value, p.trim()))
-        .sum()
+    for p in paths.split(',') {
+        if let Some(v) = resolve_json_u32(value, p.trim()) {
+            if v > 0 {
+                return v;
+            }
+        }
+    }
+    0
 }
 
 /// Resolve a dot-separated JSON path to a u32 value.
