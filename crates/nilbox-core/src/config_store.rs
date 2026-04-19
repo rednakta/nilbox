@@ -727,24 +727,13 @@ impl ConfigStore {
                 INSERT OR IGNORE INTO env_providers (env_name, provider_name, sort_order) VALUES
                     ('OPENAI_API_KEY',        'OpenAI',        1),
                     ('ANTHROPIC_API_KEY',      'Anthropic',     2),
-                    ('GEMINI_API_KEY',         'Google Gemini', 3),
-                    ('GOOGLE_API_KEY',         'Google Gemini', 4),
-                    ('MISTRAL_API_KEY',        'Mistral AI',    5),
-                    ('GROQ_API_KEY',           'Groq',          6),
-                    ('COHERE_API_KEY',         'Cohere',        7),
-                    ('CO_API_KEY',             'Cohere',        8),
-                    ('TOGETHER_API_KEY',       'Together AI',   9),
-                    ('PPLX_API_KEY',           'Perplexity',    10),
-                    ('REPLICATE_API_TOKEN',    'Replicate',     11),
-                    ('HF_TOKEN',               'HuggingFace',   12),
-                    ('HUGGINGFACE_API_KEY',    'HuggingFace',   13),
-                    ('XAI_API_KEY',            'xAI (Grok)',    14),
-                    ('DEEPSEEK_API_KEY',       'DeepSeek',      15),
-                    ('AZURE_OPENAI_API_KEY',   'Azure OpenAI',  16),
-                    ('AZURE_OPENAI_ENDPOINT',  'Azure OpenAI',  17),
-                    ('AWS_ACCESS_KEY_ID',      'AWS Bedrock',   18),
-                    ('AWS_SECRET_ACCESS_KEY',  'AWS Bedrock',   19),
-                    ('AWS_REGION',             'AWS Bedrock',   20);
+                    ('GOOGLE_API_KEY',         'Google Gemini', 3),
+                    ('TELEGRAM_BOT_TOKEN',     'Telegram',      4),
+                    ('AWS_ACCESS_KEY_ID',      'AWS Bedrock',   5),
+                    ('AWS_SECRET_ACCESS_KEY',  'AWS Bedrock',   6),
+                    ('MISTRAL_API_KEY',        'Mistral AI',    7),
+                    ('REPLICATE_API_TOKEN',    'Replicate',     8),
+                    ('OPENROUER_API_KEY',      'OpenRouter',    9);
 
                 INSERT OR IGNORE INTO settings (key, value) VALUES ('auto_update_check', 'true');
                 INSERT OR IGNORE INTO settings (key, value) VALUES ('developer_mode', 'false');
