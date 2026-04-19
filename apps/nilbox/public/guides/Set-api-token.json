@@ -1,66 +1,35 @@
 {
   "id": "Set-api-token",
   "version": 1,
-  "title": "How to set api token",
+  "title": "How to add api token",
   "steps": [
     {
       "id": "step-1",
-      "selector": "[data-guide-id='nav-mappings'] span:nth-child(2)",
+      "selector": "[data-guide-id='nav-credentials'] span:nth-child(2)",
       "navigateTo": null,
       "bubble": {
-        "title": "Mappings menu",
-        "description": "Select the Mappings menu",
+        "title": "Step",
+        "description": "",
         "position": "auto"
       },
       "expectedAction": {
         "type": "click",
-        "selector": "[data-guide-id='nav-mappings'] span:nth-child(2)"
+        "selector": "[data-guide-id='nav-credentials'] span:nth-child(2)"
       },
       "skipIf": null
     },
     {
       "id": "step-2",
-      "selector": "div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > button:nth-child(2)",
+      "selector": "div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > button:nth-child(1)",
       "navigateTo": null,
       "bubble": {
-        "title": "Environments menu",
-        "description": "Select the Environments menu",
+        "title": "Step",
+        "description": "",
         "position": "auto"
       },
       "expectedAction": {
         "type": "click",
-        "selector": "div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > button:nth-child(2)"
-      },
-      "skipIf": null
-    },
-    {
-      "id": "step-3",
-      "selector": "td:nth-child(2) > div:nth-child(1) > div:nth-child(1) > input:nth-child(1)",
-      "navigateTo": null,
-      "bubble": {
-        "title": "API Token",
-        "description": "Choose your api token name",
-        "position": "auto"
-      },
-      "expectedAction": {
-        "type": "click",
-        "selector": "td:nth-child(2) > div:nth-child(1) > div:nth-child(1) > input:nth-child(1)"
-      },
-      "skipIf": null
-    },
-    {
-      "id": "step-4",
-      "selector": "td:nth-child(2) > div:nth-child(1) > div:nth-child(1) > input:nth-child(1)",
-      "navigateTo": null,
-      "bubble": {
-        "title": "token",
-        "description": "Enter your token value",
-        "position": "auto"
-      },
-      "expectedAction": {
-        "type": "input",
-        "selector": "td:nth-child(2) > div:nth-child(1) > div:nth-child(1) > input:nth-child(1)",
-        "value": "on"
+        "selector": "div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > button:nth-child(1)"
       },
       "skipIf": null
     }

@@ -18,14 +18,6 @@
       "file": "/guides/start-shell.json"
     },
     {
-      "id": "oauth-openai",
-      "title": { "en": "Setup OpenAI oauth login", "ko": "OpenAI oauth 로그인 설정하기" },
-      "description": { "en": "Learn how to set up OpenAI oauth login.", "ko": "OpenAI oauth 로그인을 설정하는 방법을 배웁니다." },
-      "estimatedMinutes": 1,
-      "tags": ["beginner"],
-      "file": "/guides/oauth-openai.json"
-    },
-    {
       "id": "Set-api-token",
       "title": { "en": "How to add api token", "ko": "API 토큰 추가하기" },
       "description": { "en": "Add api token to nilbox", "ko": "nilbox에 API 토큰 추가하기" },
