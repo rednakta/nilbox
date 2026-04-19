@@ -85,13 +85,16 @@ Linux and Windows dev mode requires QEMU binaries in `apps/nilbox/src-tauri/bina
 
 See [`scripts/build-qemu-linux.sh`](../scripts/build-qemu-linux.sh) or [`scripts/build-qemu-windows.sh`](../scripts/build-qemu-windows.sh).
 
-**Option B — Copy from an existing nilbox install (easiest):**
+**Option B — Download prebuilt binaries (easiest):**
 
-Install a nilbox release, then copy the bundled QEMU binaries into your dev tree:
+Use the fetch script to download QEMU binaries for your platform:
 
 ```bash
-# Example on Linux — adjust the source path to your nilbox install location
-cp -r /path/to/nilbox/qemu/* apps/nilbox/src-tauri/binaries/
+# For Linux
+PLATFORM=linux ./fetch-qemu-binaries.sh [RELEASE_TAG]
+
+# For Windows
+PLATFORM=windows ./fetch-qemu-binaries.sh [RELEASE_TAG]
 ```
 
 > **Warning:** `binaries/` must be listed in `.gitignore`. Never commit QEMU binaries to the repository.
