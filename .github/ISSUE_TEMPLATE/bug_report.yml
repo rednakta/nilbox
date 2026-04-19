@@ -13,6 +13,7 @@ body:
       label: Platform
       description: Which OS are you running nilbox on?
       options:
+        - All platforms
         - macOS
         - Linux
         - Windows
