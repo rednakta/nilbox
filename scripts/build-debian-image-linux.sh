@@ -530,6 +530,75 @@ rm -rf /mnt/debian/var/cache/apt/ /mnt/debian/var/lib/apt/lists/
 echo "nameserver 127.0.0.53" > /mnt/debian/etc/resolv.conf
 echo "[container] Python certifi installed"
 
+# ── 4i.8: Install libnss3-tools + initialize root NSS database ──
+# Chrome/Chromium on Linux uses NSS for certificate validation.
+# The NilBox Inspect CA will be registered into this database at VM start
+# (via handle_update_ca_certificates in vm-agent), so certutil must be available.
+echo "[container] Installing libnss3-tools and initializing NSS database..."
+cp /etc/resolv.conf /mnt/debian/etc/resolv.conf
+chroot /mnt/debian env DEBIAN_FRONTEND=noninteractive \
+    apt-get update -qq \
+    -o Acquire::http::Proxy="" -o Acquire::https::Proxy=""
+chroot /mnt/debian env DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+    -o Acquire::http::Proxy="" -o Acquire::https::Proxy="" \
+    libnss3-tools
+rm -rf /mnt/debian/var/cache/apt/ /mnt/debian/var/lib/apt/lists/
+echo "nameserver 127.0.0.53" > /mnt/debian/etc/resolv.conf
+echo "[container] libnss3-tools installed"
+
+# Pre-create the NSS database at build time so the runtime service never
+# invokes `certutil -N`. Running `-N` against an existing SQL NSS DB triggers
+# a softoken busy-loop that burns 100% CPU indefinitely (see bug: certutil
+# hangs when re-initializing an existing sql: database).
+chroot /mnt/debian install -d /home/nilbox/.pki
+chroot /mnt/debian install -d /home/nilbox/.pki/nssdb
+chroot /mnt/debian certutil -N -d sql:/home/nilbox/.pki/nssdb --empty-password
+chroot /mnt/debian chown -R nilbox:nilbox /home/nilbox/.pki
+echo "[container] NSS DB pre-created at /home/nilbox/.pki/nssdb"
+
+# systemd path unit: watch for CA cert and register it in Chrome NSS database.
+# Runs certutil as a small oneshot service (not forked from vm-agent) to avoid OOM.
+cat > /mnt/debian/etc/systemd/system/nilbox-nssdb.path << 'EOF'
+[Unit]
+Description=Watch for NilBox Inspect CA certificate
+
+[Path]
+PathExists=/usr/local/share/ca-certificates/nilbox-inspect.crt
+PathChanged=/usr/local/share/ca-certificates/nilbox-inspect.crt
+Unit=nilbox-nssdb.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /mnt/debian/etc/systemd/system/nilbox-nssdb.service << 'EOF'
+[Unit]
+Description=Register NilBox Inspect CA in Chrome NSS database
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=nilbox
+# Safety net: recreate DB only if missing. The image ships with a pre-created DB,
+# so this branch normally does nothing. Never run `-N` against an existing DB —
+# NSS softoken spins at 100% CPU in that path.
+ExecStartPre=/bin/bash -c 'mkdir -p /home/nilbox/.pki/nssdb && \
+    [ -f /home/nilbox/.pki/nssdb/cert9.db ] || \
+    certutil -N -d sql:/home/nilbox/.pki/nssdb --empty-password'
+# Idempotent add: skip if the CA is already registered, so path-unit retriggers
+# (e.g. CA cert rewritten) do not fail with SEC_ERROR_ADDING_CERT.
+ExecStart=/bin/bash -c 'certutil -L -d sql:/home/nilbox/.pki/nssdb \
+    | grep -q "NilBox Inspect CA" || \
+    certutil -A -n "NilBox Inspect CA" -t "CT,," \
+        -i /usr/local/share/ca-certificates/nilbox-inspect.crt \
+        -d sql:/home/nilbox/.pki/nssdb'
+RemainAfterExit=no
+EOF
+
+chroot /mnt/debian systemctl enable nilbox-nssdb.path
+echo "[container] nilbox-nssdb path unit installed and enabled"
+
 # ── 4j: initramfs virtio modules ──
 echo "[container] Updating initramfs with virtio modules..."
 
