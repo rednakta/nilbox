@@ -542,6 +542,16 @@ rm -rf /mnt/debian/var/cache/apt/ /mnt/debian/var/lib/apt/lists/
 echo "nameserver 127.0.0.53" > /mnt/debian/etc/resolv.conf
 echo "[container] libnss3-tools installed"
 
+# Pre-create the NSS database at build time so the runtime service never
+# invokes `certutil -N`. Running `-N` against an existing SQL NSS DB triggers
+# a softoken busy-loop that burns 100% CPU indefinitely (see bug: certutil
+# hangs when re-initializing an existing sql: database).
+chroot /mnt/debian install -d /home/nilbox/.pki
+chroot /mnt/debian install -d /home/nilbox/.pki/nssdb
+chroot /mnt/debian certutil -N -d sql:/home/nilbox/.pki/nssdb --empty-password
+chroot /mnt/debian chown -R nilbox:nilbox /home/nilbox/.pki
+echo "[container] NSS DB pre-created at /home/nilbox/.pki/nssdb"
+
 # systemd path unit: watch for CA cert and register it in Chrome NSS database.
 # Runs certutil as a small oneshot service (not forked from vm-agent) to avoid OOM.
 cat > /mnt/debian/etc/systemd/system/nilbox-nssdb.path << 'EOF'
@@ -565,11 +575,19 @@ After=local-fs.target
 [Service]
 Type=oneshot
 User=nilbox
-# Initialize the NSS database at runtime (chroot init is unreliable)
-ExecStartPre=/bin/bash -c 'mkdir -p /home/nilbox/.pki/nssdb && certutil -N -d sql:/home/nilbox/.pki/nssdb --empty-password 2>/dev/null || true'
-ExecStart=/usr/bin/certutil -A -n "NilBox Inspect CA" -t "CT,," \
-    -i /usr/local/share/ca-certificates/nilbox-inspect.crt \
-    -d sql:/home/nilbox/.pki/nssdb
+# Safety net: recreate DB only if missing. The image ships with a pre-created DB,
+# so this branch normally does nothing. Never run `-N` against an existing DB —
+# NSS softoken spins at 100% CPU in that path.
+ExecStartPre=/bin/bash -c 'mkdir -p /home/nilbox/.pki/nssdb && \
+    [ -f /home/nilbox/.pki/nssdb/cert9.db ] || \
+    certutil -N -d sql:/home/nilbox/.pki/nssdb --empty-password'
+# Idempotent add: skip if the CA is already registered, so path-unit retriggers
+# (e.g. CA cert rewritten) do not fail with SEC_ERROR_ADDING_CERT.
+ExecStart=/bin/bash -c 'certutil -L -d sql:/home/nilbox/.pki/nssdb \
+    | grep -q "NilBox Inspect CA" || \
+    certutil -A -n "NilBox Inspect CA" -t "CT,," \
+        -i /usr/local/share/ca-certificates/nilbox-inspect.crt \
+        -d sql:/home/nilbox/.pki/nssdb'
 RemainAfterExit=no
 EOF
 
@@ -660,9 +678,11 @@ rm -f /mnt/debian/etc/ssh/moduli
 # Only remove higher-level dist-packages
 rm -rf /mnt/debian/usr/lib/python3/dist-packages/
 # Keep: /usr/bin/python3, /usr/lib/python3/
-# Remove dpkg records for python3-pip so guest 'apt-get install python3-pip' reinstalls properly.
+# Remove dpkg records for python3-pip and its deps whose files were wiped above,
+# so guest 'apt-get install python3-pip' reinstalls cleanly instead of trying to
+# reconfigure a broken python3-wheel (missing dist-packages/wheel → py3compile fail).
 # (certifi was installed via pip to /usr/local/lib, so it is preserved above)
-chroot /mnt/debian dpkg --remove --force-depends python3-pip python3-pip-whl 2>/dev/null || true
+chroot /mnt/debian dpkg --remove --force-depends python3-pip python3-pip-whl python3-wheel 2>/dev/null || true
 
 # dpkg/apt — kept for runtime package installation
 # (var/lib/apt/lists/ already removed above; re-run: apt-get update && apt-get install ...)
