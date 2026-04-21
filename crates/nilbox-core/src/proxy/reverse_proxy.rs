@@ -786,9 +786,15 @@ impl ReverseProxy {
             if let Some(dummy_rt) = body_params.get("refresh_token") {
                 if OAuthTokenVault::is_dummy_refresh_token(dummy_rt) {
                     old_refresh_dummy = Some(dummy_rt.clone());
+                    let session_uuid = super::oauth_token_vault::parse_dummy_prefix(dummy_rt)
+                        .map(|(_, u)| u.to_string())
+                        .unwrap_or_else(|| "?".to_string());
                     match self.oauth_vault.resolve_refresh_token(dummy_rt).await {
                         Ok(Some(real_rt)) => {
-                            debug!("Resolved dummy refresh token for provider {}", provider_id);
+                            debug!(
+                                "OAuth refresh [reverse-proxy]: resolved dummy→real (provider={}, session={})",
+                                provider_id, session_uuid
+                            );
                             // Rebuild body with real refresh token
                             let mut new_params = body_params.clone();
                             new_params.insert("refresh_token".to_string(), real_rt);
@@ -798,10 +804,16 @@ impl ReverseProxy {
                                 .into_bytes();
                         }
                         Ok(None) => {
-                            warn!("Dummy refresh token not found in vault: {}", dummy_rt);
+                            warn!(
+                                "OAuth refresh [reverse-proxy]: dummy refresh token parse failed, forwarding original value upstream (provider={})",
+                                provider_id
+                            );
                         }
                         Err(e) => {
-                            warn!("Failed to resolve dummy refresh token: {}", e);
+                            warn!(
+                                "OAuth refresh [reverse-proxy]: resolve_refresh_token failed: {} — forwarding original value upstream (provider={}, session={})",
+                                e, provider_id, session_uuid
+                            );
                         }
                     }
                 }

@@ -700,18 +700,30 @@ pub async fn handle_inspect_connect(
                                 let mut val = v.clone();
                                 if OAuthTokenVault::is_dummy_refresh_token(&val) {
                                     old_refresh = Some(val.clone());
+                                    let session_uuid = super::oauth_token_vault::parse_dummy_prefix(&val)
+                                        .map(|(_, u)| u.to_string())
+                                        .unwrap_or_else(|| "?".to_string());
                                     match ctx.oauth_vault.resolve_refresh_token(&val).await {
                                         Ok(Some(real)) => {
-                                            debug!("inspect PKCE: resolved dummy refresh token for key={}", k);
+                                            debug!(
+                                                "OAuth refresh [inspect-pkce]: resolved dummy→real (provider={}, session={}, key={})",
+                                                provider.info.name, session_uuid, k
+                                            );
                                             val = real;
                                             needs_rewrite = true;
                                         }
                                         Ok(None) => {
-                                            warn!("inspect PKCE: invalid dummy refresh token format");
+                                            warn!(
+                                                "OAuth refresh [inspect-pkce]: dummy refresh token parse failed, sending EMPTY refresh_token upstream (provider={}, key={})",
+                                                provider.info.name, k
+                                            );
                                             val = String::new();
                                         }
                                         Err(e) => {
-                                            warn!("inspect PKCE: dummy refresh token resolution failed: {}", e);
+                                            warn!(
+                                                "OAuth refresh [inspect-pkce]: resolve_refresh_token failed: {} — sending EMPTY refresh_token upstream (provider={}, session={}, key={})",
+                                                e, provider.info.name, session_uuid, k
+                                            );
                                             val = String::new();
                                         }
                                     }
@@ -869,6 +881,16 @@ pub async fn handle_inspect_connect(
             // Read full body
             let raw_body = response.bytes().await
                 .map_err(|e| anyhow!("inspect upstream body: {}", e))?;
+
+            // Diagnostic: log upstream 4xx on refresh attempts so we can
+            // distinguish "OpenAI rejected our refresh_token" from "we sent garbage".
+            if status.is_client_error() && oauth_old_refresh_dummy.is_some() && oauth_matched_provider.is_some() {
+                let preview = String::from_utf8_lossy(&raw_body[..raw_body.len().min(300)]);
+                warn!(
+                    "OAuth refresh [inspect-pkce]: upstream {} returned {} — body preview: {}",
+                    url, status, preview
+                );
+            }
 
             // OAuth token response interception (inspect path)
             // Match by: (1) credential substitution done earlier, (2) token_path_pattern, (3) URL

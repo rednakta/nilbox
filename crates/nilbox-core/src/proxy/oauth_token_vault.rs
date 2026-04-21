@@ -271,7 +271,7 @@ impl OAuthTokenVault {
             None => return Ok(None),
         };
         debug!(
-            "OAuth resolve_refresh_token: provider={} session={}",
+            "OAuth refresh vault: resolve start (provider={}, session={})",
             provider_id, session_uuid
         );
 
@@ -282,14 +282,14 @@ impl OAuthTokenVault {
                 match session.refresh_token {
                     Some(rt) => {
                         debug!(
-                            "OAuth resolve_refresh_token: resolved provider={} session={}",
+                            "OAuth refresh vault: resolved (provider={}, session={})",
                             provider_id, session_uuid
                         );
                         Ok(Some(rt))
                     }
                     None => {
                         warn!(
-                            "OAuth resolve_refresh_token: session has no refresh_token provider={} session={}",
+                            "OAuth refresh vault: session has no refresh_token (provider={}, session={})",
                             provider_id, session_uuid
                         );
                         Err(anyhow!("session exists but refresh_token is empty (provider={}, session={})", provider_id, session_uuid))
@@ -298,7 +298,7 @@ impl OAuthTokenVault {
             }
             Err(_) => {
                 warn!(
-                    "OAuth resolve_refresh_token: session not found provider={} session={}",
+                    "OAuth refresh vault: session not found in keystore (provider={}, session={})",
                     provider_id, session_uuid
                 );
                 Err(anyhow!("session not found (provider={}, session={})", provider_id, session_uuid))
