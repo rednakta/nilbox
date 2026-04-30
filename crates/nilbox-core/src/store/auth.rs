@@ -12,6 +12,11 @@ use crate::keystore::KeyStore;
 const STORE_REFRESH_TOKEN: &str = "store:refresh_token";
 const STORE_EMAIL: &str = "store:email";
 
+/// Refresh the access token if its JWT `exp` is within this many seconds.
+/// Gives `access_token()` callers a small grace window so a request issued
+/// "right at the edge" doesn't race the server-side expiry.
+const REFRESH_LEEWAY_SECS: i64 = 60;
+
 #[derive(Debug, Deserialize)]
 struct SessionResponse {
     session_id: String,
@@ -399,7 +404,36 @@ impl StoreAuth {
     }
 
     /// Get the current access token (for HTTP requests).
+    ///
+    /// Lazily refreshes when the cached JWT's `exp` claim is within
+    /// `REFRESH_LEEWAY_SECS` (or already past). Returns `None` only when no
+    /// token is held at all *and* refresh is impossible (no refresh token, or
+    /// the refresh request itself failed and cleared state).
     pub async fn access_token(&self) -> Option<String> {
+        let cached = self.access_token.read().await.clone();
+        match cached {
+            Some(t) if !is_jwt_near_expiry(&t, REFRESH_LEEWAY_SECS) => Some(t),
+            Some(_) => {
+                debug!("access_token: cached JWT near/past expiry, refreshing");
+                if let Err(e) = self.refresh().await {
+                    warn!("access_token: refresh failed: {}", e);
+                    return None;
+                }
+                self.access_token.read().await.clone()
+            }
+            None => None,
+        }
+    }
+
+    /// Force a refresh using the stored refresh token, then return the new
+    /// access token. Used by callers that just received a 401 from upstream
+    /// even though the cached `exp` was still in the future (server-side
+    /// revocation, clock skew, policy change, etc.).
+    pub async fn force_refresh_access_token(&self) -> Option<String> {
+        if let Err(e) = self.refresh().await {
+            warn!("force_refresh_access_token: refresh failed: {}", e);
+            return None;
+        }
         self.access_token.read().await.clone()
     }
 
@@ -532,6 +566,34 @@ impl StoreAuth {
 
         Ok(info.email)
     }
+}
+
+// ── JWT helpers ──────────────────────────────────────────────
+
+/// Decode a JWT's `exp` claim (seconds since epoch). Signature is NOT verified —
+/// the token has already been authenticated when received over TLS from the
+/// store, and we only need the expiry hint for client-side caching decisions.
+fn jwt_exp(token: &str) -> Option<i64> {
+    let payload = token.splitn(3, '.').nth(1)?;
+    let padded = format!("{}{}", payload, "=".repeat((4 - payload.len() % 4) % 4));
+    use base64::{Engine as _, engine::general_purpose::URL_SAFE};
+    let decoded = URL_SAFE.decode(&padded).ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&decoded).ok()?;
+    claims.get("exp")?.as_i64()
+}
+
+/// True if the JWT will expire within `leeway` seconds (or already has, or has
+/// no `exp` claim — in which case we conservatively treat it as expiring).
+fn is_jwt_near_expiry(token: &str, leeway: i64) -> bool {
+    let exp = match jwt_exp(token) {
+        Some(v) => v,
+        None => return true,
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    exp - now <= leeway
 }
 
 // ── Legacy file migration helpers ─────────────────────────────
