@@ -2036,14 +2036,10 @@ impl NilBoxService {
         // so we can register the app in the DB when install completes.
         // (app_id, app_name, inbound_ports, admin_urls, functions)
         let install_app_info: Option<(String, String, Vec<u16>, Vec<(String, String)>, Vec<(String, String)>)> = if let Some(url) = install_url {
-            let mut req = reqwest::Client::new().get(url);
-            // Only inject store token for store.nilbox.run to prevent token leakage to arbitrary hosts
-            if url.starts_with(crate::store::STORE_BASE_URL) {
-                if let Some(token) = self.state.store_auth.access_token().await {
-                    req = req.header("Authorization", format!("Bearer {}", token));
-                }
-            }
-            match req.send().await {
+            // fetch_store_url only attaches the bearer for STORE_BASE_URL hosts
+            // (avoids leaking the token to arbitrary hosts) and refreshes once
+            // on 401 if the server-side has revoked the cached token.
+            match self.fetch_store_url(url).await {
                 Ok(resp) if resp.status().is_success() => {
                     match resp.json::<serde_json::Value>().await {
                         Ok(raw) => {
@@ -2962,16 +2958,9 @@ impl NilBoxService {
         use crate::store::envelope::parse_envelope;
         use crate::store::verify::verify_envelope;
 
-        // 1. Fetch manifest from store
-        let client = reqwest::Client::new();
-        let mut req = client.get(manifest_url);
-        // Only inject store token for store.nilbox.run to prevent token leakage to arbitrary hosts
-        if manifest_url.starts_with(crate::store::STORE_BASE_URL) {
-            if let Some(token) = self.state.store_auth.access_token().await {
-                req = req.header("Authorization", format!("Bearer {}", token));
-            }
-        }
-        let resp = req.send().await
+        // 1. Fetch manifest from store. fetch_store_url scopes the bearer to
+        // STORE_BASE_URL hosts and refreshes once on 401.
+        let resp = self.fetch_store_url(manifest_url).await
             .map_err(|e| anyhow!("Failed to fetch manifest: {}", e))?;
         if !resp.status().is_success() {
             return Err(anyhow!("Manifest fetch failed: HTTP {}", resp.status()));
@@ -3258,6 +3247,34 @@ impl NilBoxService {
 
     pub async fn store_access_token(&self) -> Option<String> {
         self.state.store_auth.access_token().await
+    }
+
+    /// GET a store URL with the current bearer token, transparently refreshing
+    /// once on 401. Bearer is only attached when `url` targets `STORE_BASE_URL`.
+    async fn fetch_store_url(&self, url: &str) -> reqwest::Result<reqwest::Response> {
+        let client = reqwest::Client::new();
+        let is_store = url.starts_with(crate::store::STORE_BASE_URL);
+
+        let send_with_token = |token: Option<String>| {
+            let mut req = client.get(url);
+            if let Some(t) = token {
+                req = req.header("Authorization", format!("Bearer {}", t));
+            }
+            req.send()
+        };
+
+        let token = if is_store { self.state.store_auth.access_token().await } else { None };
+        let resp = send_with_token(token).await?;
+
+        // Server may have revoked the token even though our cached `exp` is in
+        // the future. Force a refresh and retry once.
+        if is_store && resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+            warn!("fetch_store_url: 401 from {}, attempting one refresh+retry", url);
+            if let Some(fresh) = self.state.store_auth.force_refresh_access_token().await {
+                return send_with_token(Some(fresh)).await;
+            }
+        }
+        Ok(resp)
     }
 
     /// JWT access token에서 `verified` 클레임을 추출합니다.
