@@ -21,6 +21,7 @@ export interface VmInfo {
   base_os: string | null;
   base_os_version: string | null;
   target_platform: string | null;
+  manifest_version: string | null;
   admin_urls: AdminUrlInfo[];
   vm_dir: string | null;
 }
