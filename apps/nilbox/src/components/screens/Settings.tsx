@@ -13,8 +13,10 @@ import {
   setCdpBrowser as setCdpBrowserApi,
   getCdpOpenMode,
   setCdpOpenMode as setCdpOpenModeApi,
+  listVms,
   UpdateInfo,
   ForceUpgradeInfo,
+  VmInfo,
 } from "../../lib/tauri";
 
 interface SettingsProps {
@@ -38,6 +40,7 @@ export const Settings: React.FC<SettingsProps> = ({ developerMode, onDeveloperMo
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [cdpBrowser, setCdpBrowser] = useState<string>("chrome");
   const [cdpOpenMode, setCdpOpenMode] = useState<string>("auto");
+  const [vmList, setVmList] = useState<VmInfo[]>([]);
 
   useEffect(() => {
     getUpdateSettings().then((s) => {
@@ -54,6 +57,7 @@ export const Settings: React.FC<SettingsProps> = ({ developerMode, onDeveloperMo
     getVersion().then(setCurrentVersion).catch(() => {});
     getCdpBrowser().then(setCdpBrowser).catch(() => {});
     getCdpOpenMode().then(setCdpOpenMode).catch(() => {});
+    listVms().then(setVmList).catch(() => {});
   }, []);
 
   const handleLanguageChange = (lang: string) => {
@@ -508,6 +512,52 @@ export const Settings: React.FC<SettingsProps> = ({ developerMode, onDeveloperMo
             </div>
           </div>
         </label>
+      </div>
+
+      {/* VM Image */}
+      <div style={sectionStyle}>
+        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: "var(--text-primary)" }}>
+          {t("settings.vmImage")}
+        </h3>
+        {vmList.length === 0 ? (
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            {t("settings.vmImageNoVm")}
+          </div>
+        ) : (
+          vmList.map((vm) => (
+            <div
+              key={vm.id}
+              style={{
+                background: "var(--bg-elevated)",
+                borderRadius: 6,
+                padding: "10px 12px",
+                marginBottom: 8,
+              }}
+            >
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", marginBottom: 6 }}>
+                {vm.name}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", rowGap: 4 }}>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("settings.vmImageManifestVersion")}</span>
+                <span style={{ fontSize: 11, color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>
+                  {vm.manifest_version ?? "—"}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("settings.vmImageOsVersion")}</span>
+                <span style={{ fontSize: 11, color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>
+                  {vm.base_os_version ?? "—"}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("settings.vmImageBaseOs")}</span>
+                <span style={{ fontSize: 11, color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>
+                  {vm.base_os ?? "—"}
+                </span>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("settings.vmImageInstalledAt")}</span>
+                <span style={{ fontSize: 11, color: "var(--text-primary)" }}>
+                  {vm.created_at ? vm.created_at.slice(0, 10) : "—"}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
     </div>

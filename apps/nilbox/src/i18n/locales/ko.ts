@@ -462,6 +462,12 @@ const ko = {
     sidebarDisplayDesc: "사이드바 메뉴 표시 방식을 선택합니다",
     sidebarIconOnly: "아이콘만",
     sidebarIconText: "아이콘 + 텍스트",
+    vmImage: "VM 이미지",
+    vmImageManifestVersion: "Nilbox OS 버전",
+    vmImageOsVersion: "OS 버전",
+    vmImageBaseOs: "기반 OS",
+    vmImageInstalledAt: "설치일",
+    vmImageNoVm: "설치된 VM 이미지가 없습니다",
   },
   guide: {
     scenarioListTitle: "튜토리얼",

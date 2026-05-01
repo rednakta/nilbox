@@ -399,6 +399,7 @@ pub async fn install_from_manifest_url(
         base_os: manifest.base_os.clone(),
         base_os_version: manifest.base_os_version.clone(),
         target_platform: manifest.target_platform.as_ref().map(|v| v.join(",")),
+        manifest_version: manifest.version.clone(),
     };
 
     let admin_urls: Vec<(String, String)> = manifest
@@ -565,6 +566,7 @@ pub fn install_from_cache(
         base_os: manifest.base_os.clone(),
         base_os_version: manifest.base_os_version.clone(),
         target_platform: manifest.target_platform.as_ref().map(|v| v.join(",")),
+        manifest_version: manifest.version.clone(),
     };
 
     let admin_urls: Vec<(String, String)> = manifest

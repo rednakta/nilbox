@@ -35,6 +35,7 @@ pub struct VmRecord {
     pub base_os: Option<String>,
     pub base_os_version: Option<String>,
     pub target_platform: Option<String>,
+    pub manifest_version: Option<String>,
 }
 
 /// An admin URL entry for a VM.
@@ -745,6 +746,20 @@ impl ConfigStore {
             )?;
         }
 
+        // v40: add manifest_version to vms table.
+        if current_version > 0 && current_version < 40 {
+            let has_manifest_version: bool = conn.query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('vms') WHERE name='manifest_version'",
+                [], |r| r.get::<_, i64>(0),
+            ).map(|n| n > 0).unwrap_or(false);
+            if !has_manifest_version {
+                conn.execute_batch(
+                    "ALTER TABLE vms ADD COLUMN manifest_version TEXT;"
+                )?;
+            }
+            conn.execute("INSERT INTO schema_version (version) VALUES (40)", [])?;
+        }
+
         // v39: add inspect_mode + is_system to domain_allowlist for TLS-inspect bypass management.
         if current_version > 0 && current_version < 39 {
             // ALTER TABLE is idempotent-ish via column existence check.
@@ -794,8 +809,8 @@ impl ConfigStore {
     pub fn insert_vm(&self, record: &VmRecord, admin_urls: &[(String, String)]) -> Result<String> {
         let conn = self.conn.lock().map_err(|_| anyhow!("DB lock poisoned"))?;
         conn.execute(
-            "INSERT INTO vms (id, name, disk_image, kernel, initrd, append, memory_mb, cpus, is_default, description, last_boot_at, admin_url, admin_label, base_os, base_os_version, target_platform)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+            "INSERT INTO vms (id, name, disk_image, kernel, initrd, append, memory_mb, cpus, is_default, description, last_boot_at, admin_url, admin_label, base_os, base_os_version, target_platform, manifest_version)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
             params![
                 record.id,
                 record.name,
@@ -813,6 +828,7 @@ impl ConfigStore {
                 record.base_os,
                 record.base_os_version,
                 record.target_platform,
+                record.manifest_version,
             ],
         ).context("Failed to insert VM")?;
         let created_at: String = conn.query_row(
@@ -870,7 +886,7 @@ impl ConfigStore {
         let mut stmt = conn.prepare(
             "SELECT id, name, disk_image, kernel, initrd, append, memory_mb, cpus, is_default,
                     description, last_boot_at, strftime('%Y-%m-%dT%H:%M:%SZ', created_at),
-                    admin_url, admin_label, base_os, base_os_version, target_platform
+                    admin_url, admin_label, base_os, base_os_version, target_platform, manifest_version
              FROM vms WHERE id = ?1"
         )?;
         let result = stmt.query_row(params![id], |row| {
@@ -892,6 +908,7 @@ impl ConfigStore {
                 base_os: row.get(14)?,
                 base_os_version: row.get(15)?,
                 target_platform: row.get(16)?,
+                manifest_version: row.get(17)?,
             })
         });
         match result {
@@ -906,7 +923,7 @@ impl ConfigStore {
         let mut stmt = conn.prepare(
             "SELECT id, name, disk_image, kernel, initrd, append, memory_mb, cpus, is_default,
                     description, last_boot_at, strftime('%Y-%m-%dT%H:%M:%SZ', created_at),
-                    admin_url, admin_label, base_os, base_os_version, target_platform
+                    admin_url, admin_label, base_os, base_os_version, target_platform, manifest_version
              FROM vms ORDER BY created_at"
         )?;
         let rows = stmt.query_map([], |row| {
@@ -928,6 +945,7 @@ impl ConfigStore {
                 base_os: row.get(14)?,
                 base_os_version: row.get(15)?,
                 target_platform: row.get(16)?,
+                manifest_version: row.get(17)?,
             })
         })?;
         rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
@@ -938,7 +956,7 @@ impl ConfigStore {
         let mut stmt = conn.prepare(
             "SELECT id, name, disk_image, kernel, initrd, append, memory_mb, cpus, is_default,
                     description, last_boot_at, strftime('%Y-%m-%dT%H:%M:%SZ', created_at),
-                    admin_url, admin_label, base_os, base_os_version, target_platform
+                    admin_url, admin_label, base_os, base_os_version, target_platform, manifest_version
              FROM vms WHERE is_default = 1 LIMIT 1"
         )?;
         let result = stmt.query_row([], |row| {
@@ -960,6 +978,7 @@ impl ConfigStore {
                 base_os: row.get(14)?,
                 base_os_version: row.get(15)?,
                 target_platform: row.get(16)?,
+                manifest_version: row.get(17)?,
             })
         });
         match result {

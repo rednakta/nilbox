@@ -313,6 +313,7 @@ impl NilBoxService {
             base_os: record.base_os.clone(),
             base_os_version: record.base_os_version.clone(),
             target_platform: record.target_platform.clone(),
+            manifest_version: record.manifest_version.clone(),
             admin_urls: RwLock::new(
                 self.state.config_store.list_vm_admin_urls(&id).unwrap_or_else(|e| {
                     warn!("Failed to load admin URLs for VM {}: {}", id, e);
@@ -365,6 +366,7 @@ impl NilBoxService {
             base_os: None,
             base_os_version: None,
             target_platform: None,
+            manifest_version: None,
         };
         let created_at = self.state.config_store.insert_vm(&record, &[])?;
         self.state.config_store.set_default_vm(&id)?;
@@ -389,6 +391,7 @@ impl NilBoxService {
             base_os: None,
             base_os_version: None,
             target_platform: None,
+            manifest_version: None,
             admin_urls: RwLock::new(vec![]),
             platform: RwLock::new(platform),
             multiplexer: RwLock::new(None),
@@ -797,6 +800,7 @@ impl NilBoxService {
                     base_os: vm.base_os.clone(),
                     base_os_version: vm.base_os_version.clone(),
                     target_platform: vm.target_platform.clone(),
+                    manifest_version: vm.manifest_version.clone(),
                     admin_urls: admin_urls.clone(),
                     vm_dir,
                 }

@@ -49,6 +49,7 @@ pub struct VmInstance {
     pub base_os: Option<String>,
     pub base_os_version: Option<String>,
     pub target_platform: Option<String>,
+    pub manifest_version: Option<String>,
     pub admin_urls: RwLock<Vec<AdminUrlRecord>>,
     pub platform: RwLock<Box<dyn VmPlatform>>,
     pub multiplexer: RwLock<Option<Arc<StreamMultiplexer>>>,
@@ -82,6 +83,7 @@ pub struct VmInfo {
     pub base_os: Option<String>,
     pub base_os_version: Option<String>,
     pub target_platform: Option<String>,
+    pub manifest_version: Option<String>,
     pub admin_urls: Vec<AdminUrlRecord>,
     /// VM storage directory (parent of disk image).
     pub vm_dir: Option<String>,

@@ -463,6 +463,12 @@ const en = {
     sidebarDisplayDesc: "Choose how the sidebar menu is displayed",
     sidebarIconOnly: "Icon only",
     sidebarIconText: "Icon + Text",
+    vmImage: "VM Image",
+    vmImageManifestVersion: "Nilbox OS Ver.",
+    vmImageOsVersion: "OS Version",
+    vmImageBaseOs: "Base OS",
+    vmImageInstalledAt: "Installed",
+    vmImageNoVm: "No VM image installed",
   },
   guide: {
     scenarioListTitle: "Tutorials",
