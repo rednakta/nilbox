@@ -151,10 +151,15 @@ fn main() {
     // Required for reqwest 0.12 with rustls-tls-manual-roots.
     let _ = rustls::crypto::ring::default_provider().install_default();
 
+    let default_filter = if cfg!(debug_assertions) {
+        "nilbox=debug,nilbox_core=debug"
+    } else {
+        "nilbox=info,nilbox_core=info"
+    };
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "nilbox=debug,nilbox_core=debug".into()),
+                .unwrap_or_else(|_| default_filter.into()),
         )
         .init();
 
