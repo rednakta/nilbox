@@ -2328,7 +2328,7 @@ impl ConfigStore {
                     SUM(request_tokens), SUM(response_tokens),
                     SUM(total_tokens), COUNT(*)
              FROM token_usage_logs
-             WHERE vm_id = ?1 AND created_at LIKE ?2
+             WHERE vm_id = ?1 AND DATE(created_at, 'localtime') LIKE ?2
              GROUP BY provider_id
              ORDER BY SUM(total_tokens) DESC"
         )?;
@@ -2388,11 +2388,11 @@ impl ConfigStore {
     ) -> Result<Vec<TokenUsageDateEntry>> {
         let conn = self.conn.lock().map_err(|_| anyhow!("DB lock poisoned"))?;
         let mut stmt = conn.prepare(
-            "SELECT DATE(created_at) as date, provider_id,
+            "SELECT DATE(created_at, 'localtime') as date, provider_id,
                     SUM(total_tokens), COUNT(*)
              FROM token_usage_logs
-             WHERE vm_id = ?1 AND DATE(created_at) >= ?2 AND DATE(created_at) <= ?3
-             GROUP BY DATE(created_at), provider_id
+             WHERE vm_id = ?1 AND DATE(created_at, 'localtime') >= ?2 AND DATE(created_at, 'localtime') <= ?3
+             GROUP BY DATE(created_at, 'localtime'), provider_id
              ORDER BY date ASC, provider_id"
         )?;
         let rows = stmt.query_map(params![vm_id, from_date, to_date], |row| {
