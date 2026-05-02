@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" ...>
 <plist version="1.0">
   <dict>
-    <key>com.apple.security.cs.allow-jit</key><false/>
+    <key>com.apple.security.cs.allow-jit</key><true/>
     <key>com.apple.security.network.client</key><true/>
     <key>com.apple.security.network.server</key><true/>
     <key>com.apple.security.virtualization</key><true/>
