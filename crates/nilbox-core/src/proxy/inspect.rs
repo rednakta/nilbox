@@ -195,7 +195,7 @@ impl InspectCertAuthority {
             leaf_key.serialize_der(),
         ));
 
-        let cfg = ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+        let mut cfg = ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
             .with_safe_default_protocol_versions()
             .map_err(|e| anyhow!("TLS protocol versions: {}", e))?
             .with_no_client_auth()
@@ -204,6 +204,12 @@ impl InspectCertAuthority {
                 leaf_key_der,
             )
             .map_err(|e| anyhow!("ServerConfig: {}", e))?;
+
+        // The proxy parses the incoming request as HTTP/1.1, so advertise only
+        // http/1.1 in ALPN. Clients that strictly require ALPN negotiation
+        // (some HTTP/2-only libraries) close the TLS handshake without an alert
+        // when the server doesn't echo back a protocol they support.
+        cfg.alpn_protocols = vec![b"http/1.1".to_vec()];
 
         Ok(cfg)
     }
@@ -238,7 +244,6 @@ pub async fn handle_inspect_connect(
     ctx: InspectContext,
 ) -> Result<()> {
     // 1. Send "200 Connection Established" back to the VM
-    tracing::trace!("[INSPECT-DBG] starting inspect for domain={} stream={}", domain, stream.stream_id);
     stream
         .write(b"HTTP/1.1 200 Connection Established\r\n\r\n")
         .await?;
@@ -248,15 +253,8 @@ pub async fn handle_inspect_connect(
 
     // 3. TLS accept (proxy acts as the server to the VM)
     let tls_acceptor = ctx.ca.get_tls_acceptor(&domain).await?;
-    tracing::trace!("[INSPECT-DBG] TLS accepting for domain={}", domain);
     let mut tls_stream = tls_acceptor.accept(duplex).await
-        .map_err(|e| {
-            tracing::error!("[INSPECT-DBG] TLS accept FAILED for {}: {}", domain, e);
-            anyhow!("TLS accept for {}: {}", domain, e)
-        })?;
-    tracing::trace!("[INSPECT-DBG] TLS accepted for domain={}", domain);
-
-    // debug!("TLS handshake complete for {}", domain);
+        .map_err(|e| anyhow!("TLS accept for {}: {}", domain, e))?;
 
     // 4. Read plaintext HTTP request from TLS stream
     let mut buf = vec![0u8; 65536];
@@ -834,8 +832,6 @@ pub async fn handle_inspect_connect(
         debug!("inspect OAuth: stripped Accept-Encoding for token exchange interception");
     }
 
-    tracing::trace!("[INSPECT-DBG] forwarding {} {} to upstream (body={} bytes)", parsed_req.method, url, request_body_len);
-
     // 7. Forward to real upstream
     match client.execute(request).await {
         Ok(response) => {
@@ -1056,27 +1052,12 @@ pub async fn handle_inspect_connect(
             head.push_str(&format!("Content-Length: {}\r\n", body.len()));
             head.push_str("Connection: close\r\n\r\n");
 
-            tracing::trace!("[INSPECT-DBG] writing response head ({} bytes) + body ({} bytes) for {} {} status={}",
-                head.len(), body.len(), domain, parsed_req.path, status.as_u16());
             tls_stream.write_all(head.as_bytes()).await
-                .map_err(|e| {
-                    tracing::error!("[INSPECT-DBG] TLS write head FAILED for {} {}: {} (head={} bytes, body={} bytes)",
-                        domain, parsed_req.path, e, head.len(), body.len());
-                    anyhow!("TLS write head: {}", e)
-                })?;
+                .map_err(|e| anyhow!("TLS write head: {}", e))?;
             tls_stream.write_all(&body).await
-                .map_err(|e| {
-                    tracing::error!("[INSPECT-DBG] TLS write body FAILED for {} {}: {} (body={} bytes)",
-                        domain, parsed_req.path, e, body.len());
-                    anyhow!("inspect TLS write body: {}", e)
-                })?;
+                .map_err(|e| anyhow!("inspect TLS write body: {}", e))?;
             tls_stream.flush().await
-                .map_err(|e| {
-                    tracing::error!("[INSPECT-DBG] TLS flush FAILED for {} {}: {}", domain, parsed_req.path, e);
-                    anyhow!("inspect TLS flush: {}", e)
-                })?;
-            tracing::trace!("[INSPECT-DBG] response sent successfully for {} {} ({} bytes total)",
-                domain, parsed_req.path, head.len() + body.len());
+                .map_err(|e| anyhow!("inspect TLS flush: {}", e))?;
             // Track proxy bytes with domain info for StatusBar display
             ctx.monitoring.record_proxy_activity(
                 &domain,
@@ -1090,9 +1071,6 @@ pub async fn handle_inspect_connect(
         }
     }
 
-    if let Err(e) = tls_stream.shutdown().await {
-        tracing::trace!("[INSPECT-DBG] TLS shutdown for {}: {}", domain, e);
-    }
-    tracing::trace!("[INSPECT-DBG] inspect complete for {} {}", domain, parsed_req.path);
+    let _ = tls_stream.shutdown().await;
     Ok(())
 }
