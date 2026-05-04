@@ -78,9 +78,16 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
    * xterm's textarea handler. It mirrors textarea.value and forwards
    * `\x7f`*erase + newchars through term.input. After handling we call
    * stopPropagation so xterm's listener never runs for the same event,
-   * eliminating the duplicate-send path. ASCII typing is sent by xterm's
-   * keypress handler (separate event), which sets _keyPressHandled — when we
-   * see that flag we just track state without re-sending.
+   * eliminating the duplicate-send path.
+   *
+   * For non-IME ASCII keystrokes, xterm has already sent the character via
+   * its keydown handler (space, digits, symbols, lowercase a-z) or keypress
+   * handler (uppercase A-Z, sets _keyPressHandled). On WKWebView the
+   * preventDefault doesn't stop the textarea from receiving the char, so an
+   * input event still fires. We detect those keystrokes via a keydown flag
+   * and just sync state without re-sending. IME keystrokes on WKWebView fire
+   * keydown with keyCode=229 / key="Process", which we leave unflagged so
+   * the diff path runs.
    */
   const attachImeShim = (entry: TermEntry) => {
     if (entry.imeShimCleanup) return;
@@ -90,12 +97,15 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     if (!textarea || !root) return;
 
     let lastSent = "";
+    let xtermHandledKey = false;
 
     const onInput = (event: Event) => {
       if (event.target !== textarea) return;
       const cur = textarea.value;
-      if ((term as unknown as { _keyPressHandled: boolean })._keyPressHandled) {
+      if (xtermHandledKey || (term as unknown as { _keyPressHandled: boolean })._keyPressHandled) {
         lastSent = cur;
+        xtermHandledKey = false;
+        event.stopPropagation();
         return;
       }
       let common = 0;
@@ -110,8 +120,15 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
       event.stopPropagation();
     };
 
-    const onBlur = () => { lastSent = ""; };
+    const onBlur = () => { lastSent = ""; xtermHandledKey = false; };
     const onKeyDown = (ev: KeyboardEvent) => {
+      const isImeKey = ev.keyCode === 229 || ev.key === "Process" || ev.isComposing;
+      xtermHandledKey =
+        !isImeKey &&
+        ev.key.length === 1 &&
+        !ev.ctrlKey &&
+        !ev.metaKey &&
+        !ev.altKey;
       if (ev.key === "Enter" || (ev.ctrlKey && (ev.key === "c" || ev.key === "C"))) {
         queueMicrotask(() => { lastSent = textarea.value; });
       }
