@@ -66,22 +66,21 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
   }>>(new Map());
 
   /**
-   * macOS WKWebView under Tauri (observed on Apple Silicon, Sequoia) does not
-   * deliver setMarkedText: through the DOM composition events. The Korean
-   * 2-set IME instead grows each syllable by repeated insertText:replacementRange:
-   * calls — WebKit relays these as `inputType: "insertReplacementText"`
-   * without firing compositionstart/update/end. xterm's _inputEvent only acts
-   * on `inputType === "insertText"`, so every replacement (i.e. everything
-   * after the very first jamo of each syllable) is silently dropped, and the
-   * shell receives only the leading consonant per syllable.
+   * macOS WKWebView under Tauri does not fire DOM composition events for
+   * Korean IME — each jamo arrives as plain `input` (insertText for the first
+   * jamo of a syllable, insertReplacementText as the syllable grows, and
+   * insertText again when the next syllable begins on top of the previous
+   * one). xterm's own `_inputEvent` either skips these (when _keyDownSeen is
+   * true and ev.composed is true) or duplicates them (when ev.composed is
+   * false), and the behavior varies per event.
    *
-   * The shim listens on term.element in capture phase (which fires before
-   * xterm's textarea-bound handler) and, when an insertReplacementText event
-   * arrives, computes the diff between the textarea value and what we last
-   * forwarded, then forwards `\x7f`*erase + newchars through term.input so
-   * xterm's onData → writeShell pipeline carries it to the shell unchanged.
-   * For insertText we leave xterm in charge and just track the new state.
-   * State is reset whenever xterm clears the textarea (Enter, Ctrl+C, blur).
+   * The shim attaches in capture phase on term.element so it runs before
+   * xterm's textarea handler. It mirrors textarea.value and forwards
+   * `\x7f`*erase + newchars through term.input. After handling we call
+   * stopPropagation so xterm's listener never runs for the same event,
+   * eliminating the duplicate-send path. ASCII typing is sent by xterm's
+   * keypress handler (separate event), which sets _keyPressHandled — when we
+   * see that flag we just track state without re-sending.
    */
   const attachImeShim = (entry: TermEntry) => {
     if (entry.imeShimCleanup) return;
@@ -94,22 +93,21 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
 
     const onInput = (event: Event) => {
       if (event.target !== textarea) return;
-      const ev = event as InputEvent;
       const cur = textarea.value;
-      if (ev.inputType === "insertReplacementText") {
-        let common = 0;
-        const max = Math.min(lastSent.length, cur.length);
-        while (common < max && lastSent.charCodeAt(common) === cur.charCodeAt(common)) common++;
-        const erase = lastSent.length - common;
-        const insert = cur.substring(common);
-        if (erase > 0 || insert.length > 0) {
-          term.input("\x7f".repeat(erase) + insert, true);
-        }
+      if ((term as unknown as { _keyPressHandled: boolean })._keyPressHandled) {
         lastSent = cur;
-        ev.stopPropagation();
-      } else {
-        lastSent = cur;
+        return;
       }
+      let common = 0;
+      const max = Math.min(lastSent.length, cur.length);
+      while (common < max && lastSent.charCodeAt(common) === cur.charCodeAt(common)) common++;
+      const erase = lastSent.length - common;
+      const insert = cur.substring(common);
+      if (erase > 0 || insert.length > 0) {
+        term.input("\x7f".repeat(erase) + insert, true);
+      }
+      lastSent = cur;
+      event.stopPropagation();
     };
 
     const onBlur = () => { lastSent = ""; };
