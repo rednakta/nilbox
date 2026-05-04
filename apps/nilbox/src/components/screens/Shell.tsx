@@ -38,6 +38,52 @@ const createTerminal = () =>
     cursorBlink: true,
   });
 
+// Workaround for issue #31: macOS WKWebView (wry/tao) does not route CJK IME
+// input through the marked-text protocol on Apple Silicon, so xterm.js never
+// sees `composition*` events. Each syllable update arrives as a `beforeinput`
+// of inputType `insertReplacementText`, which xterm drops because it only
+// forwards `insertText`. Result: only the first jamo of every Hangul syllable
+// reaches the remote shell. We mirror what `setMarkedText:` would have done by
+// emitting DEL bytes for the previous insertion plus the new replacement text.
+const setupCjkImeWorkaround = (
+  textarea: HTMLTextAreaElement,
+  getSessionId: () => number | undefined,
+): (() => void) => {
+  let lastInserted = "";
+  const reset = () => {
+    lastInserted = "";
+  };
+
+  const onBeforeInput = (event: Event) => {
+    const e = event as InputEvent;
+    const data = e.data ?? "";
+    if (e.inputType === "insertReplacementText" && data) {
+      const sessionId = getSessionId();
+      if (sessionId == null) {
+        lastInserted = data;
+        return;
+      }
+      const eraseCount = [...lastInserted].length;
+      const payload = "\x7f".repeat(eraseCount) + data;
+      const bytes = Array.from(new TextEncoder().encode(payload));
+      writeShell(sessionId, bytes).catch(() => {});
+      lastInserted = data;
+    } else if (e.inputType === "insertText" && data) {
+      lastInserted = data;
+    } else {
+      reset();
+    }
+  };
+
+  textarea.addEventListener("beforeinput", onBeforeInput);
+  textarea.addEventListener("blur", reset);
+
+  return () => {
+    textarea.removeEventListener("beforeinput", onBeforeInput);
+    textarea.removeEventListener("blur", reset);
+  };
+};
+
 export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onInstallUrlConsumed, verifyInstallUuid, onNavigate }) => {
   const { t } = useTranslation();
   const [tabs, setTabs] = useState<TabInfo[]>([{ id: 1, connected: false, label: t("shell.defaultTabLabel", { n: "1" }) }]);
@@ -62,6 +108,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     closedUnlisten?: UnlistenFn;
     resizeObserver?: ResizeObserver;
     sessionId?: number;
+    imeCleanup?: () => void;
   }>>(new Map());
 
   const getOrCreateTerm = (tabId: number) => {
@@ -81,6 +128,12 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     if (div) {
       if (!entry.term.element) {
         entry.term.open(div);
+        const textarea = div.querySelector<HTMLTextAreaElement>(
+          "textarea.xterm-helper-textarea"
+        );
+        if (textarea && !entry.imeCleanup) {
+          entry.imeCleanup = setupCjkImeWorkaround(textarea, () => entry.sessionId);
+        }
       } else if (!div.contains(entry.term.element)) {
         // Re-attach existing terminal to the new container
         div.appendChild(entry.term.element);
@@ -213,6 +266,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
       entry.unlisten?.();
       entry.closedUnlisten?.();
       entry.resizeObserver?.disconnect();
+      entry.imeCleanup?.();
       entry.term.dispose();
       termRefs.current.delete(tabId);
     }
@@ -368,6 +422,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
           entry.unlisten?.();
           entry.closedUnlisten?.();
           entry.resizeObserver?.disconnect();
+          entry.imeCleanup?.();
           entry.term.dispose();
         }
       }
