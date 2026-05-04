@@ -62,7 +62,74 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     closedUnlisten?: UnlistenFn;
     resizeObserver?: ResizeObserver;
     sessionId?: number;
+    imeShimCleanup?: () => void;
   }>>(new Map());
+
+  /**
+   * macOS WKWebView under Tauri (observed on Apple Silicon, Sequoia) does not
+   * deliver setMarkedText: through the DOM composition events. The Korean
+   * 2-set IME instead grows each syllable by repeated insertText:replacementRange:
+   * calls — WebKit relays these as `inputType: "insertReplacementText"`
+   * without firing compositionstart/update/end. xterm's _inputEvent only acts
+   * on `inputType === "insertText"`, so every replacement (i.e. everything
+   * after the very first jamo of each syllable) is silently dropped, and the
+   * shell receives only the leading consonant per syllable.
+   *
+   * The shim listens on term.element in capture phase (which fires before
+   * xterm's textarea-bound handler) and, when an insertReplacementText event
+   * arrives, computes the diff between the textarea value and what we last
+   * forwarded, then forwards `\x7f`*erase + newchars through term.input so
+   * xterm's onData → writeShell pipeline carries it to the shell unchanged.
+   * For insertText we leave xterm in charge and just track the new state.
+   * State is reset whenever xterm clears the textarea (Enter, Ctrl+C, blur).
+   */
+  const attachImeShim = (entry: TermEntry) => {
+    if (entry.imeShimCleanup) return;
+    const term = entry.term;
+    const textarea = term.textarea;
+    const root = term.element;
+    if (!textarea || !root) return;
+
+    let lastSent = "";
+
+    const onInput = (event: Event) => {
+      if (event.target !== textarea) return;
+      const ev = event as InputEvent;
+      const cur = textarea.value;
+      if (ev.inputType === "insertReplacementText") {
+        let common = 0;
+        const max = Math.min(lastSent.length, cur.length);
+        while (common < max && lastSent.charCodeAt(common) === cur.charCodeAt(common)) common++;
+        const erase = lastSent.length - common;
+        const insert = cur.substring(common);
+        if (erase > 0 || insert.length > 0) {
+          term.input("\x7f".repeat(erase) + insert, true);
+        }
+        lastSent = cur;
+        ev.stopPropagation();
+      } else {
+        lastSent = cur;
+      }
+    };
+
+    const onBlur = () => { lastSent = ""; };
+    const onKeyDown = (ev: KeyboardEvent) => {
+      if (ev.key === "Enter" || (ev.ctrlKey && (ev.key === "c" || ev.key === "C"))) {
+        queueMicrotask(() => { lastSent = textarea.value; });
+      }
+    };
+
+    root.addEventListener("input", onInput, true);
+    textarea.addEventListener("blur", onBlur);
+    textarea.addEventListener("keydown", onKeyDown);
+
+    entry.imeShimCleanup = () => {
+      root.removeEventListener("input", onInput, true);
+      textarea.removeEventListener("blur", onBlur);
+      textarea.removeEventListener("keydown", onKeyDown);
+      entry.imeShimCleanup = undefined;
+    };
+  };
 
   const getOrCreateTerm = (tabId: number) => {
     if (!termRefs.current.has(tabId)) {
@@ -85,6 +152,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
         // Re-attach existing terminal to the new container
         div.appendChild(entry.term.element);
       }
+      attachImeShim(entry);
       entry.fit.fit();
     }
   };
@@ -210,6 +278,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     const entry = termRefs.current.get(tabId);
     if (entry) {
       entry.onDataDisposable?.dispose();
+      entry.imeShimCleanup?.();
       entry.unlisten?.();
       entry.closedUnlisten?.();
       entry.resizeObserver?.disconnect();
@@ -365,6 +434,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
             closeShell(entry.sessionId).catch(() => {});
           }
           entry.onDataDisposable?.dispose();
+          entry.imeShimCleanup?.();
           entry.unlisten?.();
           entry.closedUnlisten?.();
           entry.resizeObserver?.disconnect();
