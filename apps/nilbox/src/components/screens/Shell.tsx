@@ -63,6 +63,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     resizeObserver?: ResizeObserver;
     sessionId?: number;
     imeShimCleanup?: () => void;
+    imeShimReset?: () => void;
   }>>(new Map());
 
   /**
@@ -138,11 +139,18 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     textarea.addEventListener("blur", onBlur);
     textarea.addEventListener("keydown", onKeyDown);
 
+    entry.imeShimReset = () => {
+      lastSent = "";
+      xtermHandledKey = false;
+      textarea.value = "";
+    };
+
     entry.imeShimCleanup = () => {
       root.removeEventListener("input", onInput, true);
       textarea.removeEventListener("blur", onBlur);
       textarea.removeEventListener("keydown", onKeyDown);
       entry.imeShimCleanup = undefined;
+      entry.imeShimReset = undefined;
     };
   };
 
@@ -152,6 +160,25 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
       const fit = new FitAddon();
       term.loadAddon(fit);
       termRefs.current.set(tabId, { term, fit, div: null });
+      // Esc clears the current shell input line (sends Ctrl+U) — matches Claude
+      // Code CLI muscle memory. Returning false stops xterm from forwarding the
+      // raw \x1b. Skipped during IME composition so the IME's own cancel works.
+      term.attachCustomKeyEventHandler((ev) => {
+        if (
+          ev.type === "keydown" &&
+          ev.key === "Escape" &&
+          !ev.isComposing &&
+          ev.keyCode !== 229
+        ) {
+          const e = termRefs.current.get(tabId);
+          if (e?.sessionId != null) {
+            writeShell(e.sessionId, [0x15]).catch(() => {});
+          }
+          e?.imeShimReset?.();
+          return false;
+        }
+        return true;
+      });
     }
     return termRefs.current.get(tabId)!;
   };
