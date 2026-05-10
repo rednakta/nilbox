@@ -62,7 +62,89 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     closedUnlisten?: UnlistenFn;
     resizeObserver?: ResizeObserver;
     sessionId?: number;
+    imeShimCleanup?: () => void;
   }>>(new Map());
+
+  /**
+   * macOS WKWebView under Tauri does not fire DOM composition events for
+   * Korean IME — each jamo arrives as plain `input` (insertText for the first
+   * jamo of a syllable, insertReplacementText as the syllable grows, and
+   * insertText again when the next syllable begins on top of the previous
+   * one). xterm's own `_inputEvent` either skips these (when _keyDownSeen is
+   * true and ev.composed is true) or duplicates them (when ev.composed is
+   * false), and the behavior varies per event.
+   *
+   * The shim attaches in capture phase on term.element so it runs before
+   * xterm's textarea handler. It mirrors textarea.value and forwards
+   * `\x7f`*erase + newchars through term.input. After handling we call
+   * stopPropagation so xterm's listener never runs for the same event,
+   * eliminating the duplicate-send path.
+   *
+   * For non-IME ASCII keystrokes, xterm has already sent the character via
+   * its keydown handler (space, digits, symbols, lowercase a-z) or keypress
+   * handler (uppercase A-Z, sets _keyPressHandled). On WKWebView the
+   * preventDefault doesn't stop the textarea from receiving the char, so an
+   * input event still fires. We detect those keystrokes via a keydown flag
+   * and just sync state without re-sending. IME keystrokes on WKWebView fire
+   * keydown with keyCode=229 / key="Process", which we leave unflagged so
+   * the diff path runs.
+   */
+  const attachImeShim = (entry: TermEntry) => {
+    if (entry.imeShimCleanup) return;
+    const term = entry.term;
+    const textarea = term.textarea;
+    const root = term.element;
+    if (!textarea || !root) return;
+
+    let lastSent = "";
+    let xtermHandledKey = false;
+
+    const onInput = (event: Event) => {
+      if (event.target !== textarea) return;
+      const cur = textarea.value;
+      if (xtermHandledKey || (term as unknown as { _keyPressHandled: boolean })._keyPressHandled) {
+        lastSent = cur;
+        xtermHandledKey = false;
+        event.stopPropagation();
+        return;
+      }
+      let common = 0;
+      const max = Math.min(lastSent.length, cur.length);
+      while (common < max && lastSent.charCodeAt(common) === cur.charCodeAt(common)) common++;
+      const erase = lastSent.length - common;
+      const insert = cur.substring(common);
+      if (erase > 0 || insert.length > 0) {
+        term.input("\x7f".repeat(erase) + insert, true);
+      }
+      lastSent = cur;
+      event.stopPropagation();
+    };
+
+    const onBlur = () => { lastSent = ""; xtermHandledKey = false; };
+    const onKeyDown = (ev: KeyboardEvent) => {
+      const isImeKey = ev.keyCode === 229 || ev.key === "Process" || ev.isComposing;
+      xtermHandledKey =
+        !isImeKey &&
+        ev.key.length === 1 &&
+        !ev.ctrlKey &&
+        !ev.metaKey &&
+        !ev.altKey;
+      if (ev.key === "Enter" || (ev.ctrlKey && (ev.key === "c" || ev.key === "C"))) {
+        queueMicrotask(() => { lastSent = textarea.value; });
+      }
+    };
+
+    root.addEventListener("input", onInput, true);
+    textarea.addEventListener("blur", onBlur);
+    textarea.addEventListener("keydown", onKeyDown);
+
+    entry.imeShimCleanup = () => {
+      root.removeEventListener("input", onInput, true);
+      textarea.removeEventListener("blur", onBlur);
+      textarea.removeEventListener("keydown", onKeyDown);
+      entry.imeShimCleanup = undefined;
+    };
+  };
 
   const getOrCreateTerm = (tabId: number) => {
     if (!termRefs.current.has(tabId)) {
@@ -85,6 +167,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
         // Re-attach existing terminal to the new container
         div.appendChild(entry.term.element);
       }
+      attachImeShim(entry);
       entry.fit.fit();
     }
   };
@@ -210,6 +293,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     const entry = termRefs.current.get(tabId);
     if (entry) {
       entry.onDataDisposable?.dispose();
+      entry.imeShimCleanup?.();
       entry.unlisten?.();
       entry.closedUnlisten?.();
       entry.resizeObserver?.disconnect();
@@ -365,6 +449,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
             closeShell(entry.sessionId).catch(() => {});
           }
           entry.onDataDisposable?.dispose();
+          entry.imeShimCleanup?.();
           entry.unlisten?.();
           entry.closedUnlisten?.();
           entry.resizeObserver?.disconnect();
