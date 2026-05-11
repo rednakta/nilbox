@@ -20,7 +20,7 @@ interface Props {
 interface TabInfo {
   id: number;
   connected: boolean;
-  label: string;
+  customLabel?: string;
   sessionId?: number;
 }
 
@@ -40,7 +40,7 @@ const createTerminal = () =>
 
 export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onInstallUrlConsumed, verifyInstallUuid, onNavigate }) => {
   const { t } = useTranslation();
-  const [tabs, setTabs] = useState<TabInfo[]>([{ id: 1, connected: false, label: t("shell.defaultTabLabel", { n: "1" }) }]);
+  const [tabs, setTabs] = useState<TabInfo[]>([{ id: 1, connected: false }]);
   const [activeTab, setActiveTab] = useState(1);
   const [connecting, setConnecting] = useState(false);
   const [envEntries, setEnvEntries] = useState<EnvVarEntry[]>([]);
@@ -308,7 +308,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
 
   const addTab = () => {
     const newId = Date.now();
-    setTabs((prev) => [...prev, { id: newId, connected: false, label: t("shell.defaultTabLabel", { n: (prev.length + 1).toString() }) }]);
+    setTabs((prev) => [...prev, { id: newId, connected: false }]);
     setActiveTab(newId);
   };
 
@@ -460,7 +460,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
       } else {
         termRefs.current.clear();
         const newId = Date.now();
-        setTabs([{ id: newId, connected: false, label: t("shell.defaultTabLabel", { n: "1" }) }]);
+        setTabs([{ id: newId, connected: false }]);
         setActiveTab(newId);
       }
     };
@@ -498,7 +498,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     verifyUuidRef.current = verifyInstallUuid;
 
     const newId = Date.now();
-    setTabs((prev) => [...prev, { id: newId, connected: false, label: "Verifying..." }]);
+    setTabs((prev) => [...prev, { id: newId, connected: false, customLabel: "Verifying..." }]);
     setActiveTab(newId);
     getOrCreateTerm(newId);
     setInstallingTabIds((prev) => new Set(prev).add(newId));
@@ -526,10 +526,10 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
         });
         if (event.payload.success) {
           entry?.term.write("\r\n\x1b[32m\u2713 Installation complete\x1b[0m\r\n");
-          setTabs((prev) => prev.map((t) => (t.id === newId ? { ...t, label: "Install \u2713" } : t)));
+          setTabs((prev) => prev.map((t) => (t.id === newId ? { ...t, customLabel: "Install \u2713" } : t)));
         } else {
           entry?.term.write("\r\n\x1b[31m\u2717 Installation failed\x1b[0m\r\n");
-          setTabs((prev) => prev.map((t) => (t.id === newId ? { ...t, label: "Install \u2717" } : t)));
+          setTabs((prev) => prev.map((t) => (t.id === newId ? { ...t, customLabel: "Install \u2717" } : t)));
         }
         unlistenOutput.then((f) => f());
         unlistenDone.then((f) => f());
@@ -546,7 +546,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
   useEffect(() => {
     if (!installUrl || !vmId) return;
     const newId = Date.now();
-    setTabs((prev) => [...prev, { id: newId, connected: false, label: t("shell.defaultTabLabel", { n: (prev.length + 1).toString() }) }]);
+    setTabs((prev) => [...prev, { id: newId, connected: false }]);
     setActiveTab(newId);
     getOrCreateTerm(newId);
     setInstallingTabIds((prev) => new Set(prev).add(newId));
@@ -574,6 +574,23 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
 
   const activeTabInfo = tabs.find((t) => t.id === activeTab);
   const activeEnabled = envEntries;
+
+  // Renumber default-labeled tabs by their display order so closing a tab collapses
+  // the numbering (Shell 2 becomes Shell 1 after Shell 1 is closed). Custom labels
+  // (Verifying..., Install ✓/✗) are preserved and skipped in the count.
+  const tabLabels = (() => {
+    const labels = new Map<number, string>();
+    let n = 0;
+    for (const tab of tabs) {
+      if (tab.customLabel) {
+        labels.set(tab.id, tab.customLabel);
+      } else {
+        n += 1;
+        labels.set(tab.id, t("shell.defaultTabLabel", { n: n.toString() }));
+      }
+    }
+    return labels;
+  })();
 
   const handleFunctionKey = async (bash: string) => {
     const tab = tabs.find((t) => t.id === activeTab);
@@ -671,7 +688,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
             }}
             onClick={() => setActiveTab(tab.id)}
           >
-            <span>{tab.label}</span>
+            <span>{tabLabels.get(tab.id)}</span>
             {tabs.length > 1 && (
               <button
                 onClick={(e) => {
