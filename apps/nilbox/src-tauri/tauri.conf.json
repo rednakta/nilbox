@@ -1,6 +1,6 @@
 {
   "productName": "nilbox",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "identifier": "run.nilbox.app",
   "build": {
     "beforeDevCommand": "npm run dev",
