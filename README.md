@@ -60,7 +60,7 @@ See [Development Guide](docs/development.md) for full build instructions and rel
 
 ---
 
-## Use Case: OpenClaw
+## Use Case: OpenClaw, Hermes, local agents
 
 Consider running an autonomous AI coding agent like OpenClaw. It needs API keys for OpenAI, Anthropic, and GitHub — plus shell access to write and execute code. That's a lot of trust.
 
