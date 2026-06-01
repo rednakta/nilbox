@@ -3,20 +3,27 @@
 </p>
 
 <p align="center">
-  <strong>Desktop sandbox for running AI agents you don't trust — with real VM isolation and zero-token security.</strong>
+  <strong>A desktop sandbox for running AI agents, MCP servers, and apps you don't fully trust — safely.</strong>
 </p>
 
 <p align="center">
+  Run agents on a dedicated, isolated Linux VM — with real VM isolation and <a href="#zero-token-architecture">Zero Token Architecture</a>, so your API keys never touch the agent.
+</p>
+
+<p align="center">
+  <a href="#what-is-nilbox">What is nilbox</a> ·
+  <a href="#who-nilbox-is-for">Who It's For</a> ·
+  <a href="#zero-token-architecture">Zero Token</a> ·
+  <a href="#what-you-can-run">What You Can Run</a> ·
+  <a href="#no-code-changes--just-set-env-vars">No Code Changes</a> ·
   <a href="#quick-start">Quick Start</a> ·
-  <a href="#use-case-openclaw">Use Case</a> ·
-  <a href="#how-it-works">How It Works</a> ·
   <a href="#features">Features</a> ·
-  <a href="#documentation">Docs</a>
-</p>  
+  <a href="https://docs.nilbox.run/docs/intro/">Docs</a>
+</p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3">
-  <img src="https://img.shields.io/badge/version-0.1.8-green.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.2.3-green.svg" alt="Version">
   <img src="https://img.shields.io/badge/macOS-supported-success?logo=apple" alt="macOS">
   <img src="https://img.shields.io/badge/Linux-supported-success?logo=linux&logoColor=white" alt="Linux">
   <img src="https://img.shields.io/badge/Windows-supported-success?logo=windows&logoColor=white" alt="Windows">
@@ -24,17 +31,121 @@
 
 ---
 
-## Why nilbox?
+## What is nilbox
 
-AI agents need shell access, filesystem access, and outbound API calls. Running them in a container on the host kernel isn't real isolation — especially when those agents handle real credentials.
+**nilbox is a desktop app for running AI agents and MCP servers safely.**
 
-nilbox takes a different approach:
+It runs agents and MCP servers on a dedicated **Linux VM** that is fully isolated from your host OS, and it blocks token leakage **at the source** with Zero Token Architecture — so your real API keys never touch the agent.
 
-- **Real VM isolation** — workloads run in a full virtual machine, not a container
-- **Zero-token architecture** — API keys never enter the guest; the host proxy swaps tokens in-flight for trusted domains only
-- **Host-controlled network** — all outbound traffic routes through VSOCK to a domain-gating proxy with rate limits and approval prompts
+AI agents need shell access, filesystem access, and outbound API calls. Running them in a container on the host kernel isn't real isolation — especially when those agents handle real credentials. nilbox gives every agent a full virtual machine and a host-controlled network instead.
 
-If you wouldn't give someone your API keys, don't put those keys where their code runs.
+> If you wouldn't hand someone your API keys, don't put those keys where their code runs.
+
+---
+
+## Who nilbox Is For
+
+It helps to know which mental model applies to you.
+
+Most sandbox platforms are **infrastructure you build on**: you're shipping a product that runs *AI-generated* code from many users at scale, so you reach for a server-side platform with SDKs, container orchestration, resource quotas, and multi-tenant scheduling. You write code *against* the sandbox.
+
+**nilbox is the opposite — it's an app you run agents *in*, on the machine in front of you.** You don't build a platform; you point nilbox at an agent you already have and run it safely. Think of it as a personal, secure home for agents rather than cloud infrastructure for a fleet of them.
+
+You'll likely want nilbox if you are:
+
+- **A developer running a coding agent on your own machine** — let OpenClaw, Claude Code, or similar work autonomously (even overnight) without risking your API keys or your host OS.
+- **Someone trying AI agents without a terminal** — install agents and MCP servers from the one-click Store; no Linux knowledge required.
+- **Security-conscious about what you run** — evaluate untrusted MCP servers, packages, or binaries inside a disposable VM instead of on your real system.
+- **Running agents remotely** — drive agents from chat (Telegram, Hermes) while they stay sandboxed at home.
+
+You probably **don't** need nilbox if you're operating a cloud service that spins up thousands of ephemeral sandboxes for many tenants — that's a job for server-side sandbox infrastructure. nilbox is desktop-first and single-operator by design.
+
+---
+
+## Zero Token Architecture
+
+The core idea is simple: **never give the real token to the agent in the first place.**
+
+Instead of asking *"How do we protect the token?"*, nilbox asks *"What if we never give it out at all?"*
+
+**The limit of traditional approaches** — the real token is passed straight to the agent:
+
+```bash
+# AI agent environment variable
+OPENAI_API_KEY=sk-proj-abc1234567890xyz   # real token — stealable
+```
+
+Even inside Docker or a sandbox, a prompt injection or a malicious dependency can read environment variables and exfiltrate the key. There's no way to stop it once the agent holds the real value.
+
+**nilbox's approach** — the agent only ever sees a *fake* token whose name and value are identical:
+
+```bash
+# AI agent environment variable
+OPENAI_API_KEY=OPENAI_API_KEY             # just a string — useless to attackers
+```
+
+The real token lives only on the host, where the agent can never see it.
+
+**Token substitution flow:**
+
+```
+┌───────────┐  OPENAI_API_KEY   ┌─────────┐   sk-proj-real   ┌──────────┐
+│ AI Agent  │ ────────────────▶ │ nilbox  │ ───────────────▶ │   LLM    │
+└───────────┘                   └─────────┘                  └──────────┘
+      ▲                                                             │
+      │                         response                           │
+      └─────────────────────────────────────────────────────────────┘
+```
+
+The moment the agent makes an API call, the nilbox host proxy intercepts the request and swaps the fake token for the real one — but only for trusted domains. The agent believes it holds a real token and gets a normal response.
+
+**Why it's safe even if leaked.** If an attacker extracts the token from the agent's environment, all they get is `OPENAI_API_KEY` — a meaningless string. When malicious code tries to send it to `attacker.evil.com`, the proxy blocks the domain or forwards only the dummy value. **The real token never leaves the host.**
+
+The result:
+- **No key rotation after a compromise** — real tokens were never exposed
+- **No bill shock** — per-provider spending limits block runaway usage
+- **No data leaks** — the VM can only reach domains you approve
+
+See [Zero Token Architecture](docs/zero-token-architecture.md) for attack scenarios and defense layers.
+
+---
+
+## What You Can Run
+
+nilbox runs any agent, MCP server, or unknown app — unmodified — inside the VM. A few common setups:
+
+- 🤖 **[OpenClaw](https://docs.nilbox.run/docs/intro/)** — an autonomous AI coding agent that needs OpenAI / Anthropic / GitHub keys plus shell access. Run it with zero exposed keys.
+- 🔌 **Claude + MCP** — bridge VM-hosted MCP servers to Claude Desktop over VSOCK ([MCP Bridge](scripts/mcp/)).
+- 📡 **Hermes & Telegram** — drive agents remotely via chat integrations.
+- 🌐 **Playwright / browser automation** — run Playwright MCP with Chrome CDP over VSOCK ([guide](scripts/playwright-mcp-hello/)).
+- 📦 **Any unknown app** — try untrusted binaries and packages without risking your host.
+
+> **You don't need a Mac Mini to run agents.** That old laptop sitting at home is all you need — install nilbox and start running AI agents securely today.
+
+---
+
+## No Code Changes — Just Set Env Vars
+
+**The only thing you configure is environment variables. You never touch the code you run.**
+
+Other sandboxes are libraries: you import an SDK, wrap your logic in its API, and call into it to create a sandbox and execute code. That means the code has to be *yours* to change — and you take on the SDK as a dependency, rewrite your agent against it, and keep both in sync as each updates.
+
+nilbox works the opposite way. Your agent, MCP server, or app runs **completely unmodified** inside the VM. It reads environment variables and makes API calls exactly as it would on bare metal; the token swap and isolation happen transparently at the host proxy layer, *outside* the guest. The only setup is configuring each provider's env vars (e.g. `ANTHROPIC_API_KEY=ANTHROPIC_API_KEY`) — the values are dummy names, and nilbox substitutes the real tokens on trusted domains only.
+
+**Why this matters:**
+
+- **Run code you can't change** — closed-source agents, third-party binaries, and untrusted packages all just work. There's nothing to integrate.
+- **No SDK, no lock-in** — you don't rewrite your agent against a vendor API or carry a dependency that must track upstream releases.
+- **No maintenance drift** — when the agent updates, nothing on your side breaks; the sandbox boundary lives outside the app.
+- **Isolation that doesn't depend on cooperation** — security isn't enforced by the app calling a sandbox API correctly. Even a malicious or buggy app can't opt out of the VM boundary or reach the real tokens.
+
+```
+# Multi-provider setup — the agent only ever sees these names, never the real values
+ANTHROPIC_API_KEY=ANTHROPIC_API_KEY
+AWS_ACCESS_KEY_ID=AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=AWS_SECRET_ACCESS_KEY
+GEMINI_API_KEY=GEMINI_API_KEY
+```
 
 ---
 
@@ -42,7 +153,9 @@ If you wouldn't give someone your API keys, don't put those keys where their cod
 
 ### Download
 
-Grab the latest release for your platform from [GitHub Releases](https://github.com/paiml/nilbox/releases).
+Grab the latest release for your platform from [GitHub Releases](https://github.com/paiml/nilbox/releases), install the desktop app, and launch it. On first launch, the managed Linux VM is prepared automatically.
+
+See the [Installation guide](https://docs.nilbox.run/docs/intro/) for step-by-step setup.
 
 ### Build from Source
 
@@ -56,58 +169,7 @@ cd nilbox
 cd apps/nilbox && npm install && npm run tauri dev
 ```
 
-See [Development Guide](docs/development.md) for full build instructions and release builds.
-
----
-
-## Use Case: OpenClaw, Hermes, local agents
-
-Consider running an autonomous AI coding agent like OpenClaw. It needs API keys for OpenAI, Anthropic, and GitHub — plus shell access to write and execute code. That's a lot of trust.
-
-**Without nilbox** (traditional Docker/host setup):
-
-```bash
-# Inside the container — real keys are fully exposed
-$ echo $OPENAI_KEY
-sk-proj-abc1234567890xyz...    # real token, stealable
-```
-
-A single prompt injection or rogue dependency can read these keys, exfiltrate them, and drain your API budget.
-
-**With nilbox:**
-
-```bash
-# Inside the VM — only dummy values exist
-$ echo $OPENAI_KEY
-OPENAI_KEY                     # just a string, useless to attackers
-```
-
-**Multi-provider token setup** — configure each provider's environment variables in nilbox. OpenClaw only sees the token names as shown below; the nilbox proxy swaps them for real credentials on trusted domains only:
-
-```
-# Claude (Anthropic)
-ANTHROPIC_API_KEY=ANTHROPIC_API_KEY
-
-# AWS Bedrock
-AWS_ACCESS_KEY_ID=AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY=AWS_SECRET_ACCESS_KEY
-
-# Gemini
-GEMINI_API_KEY=GEMINI_API_KEY
-```
-
-When the agent makes a legitimate API call to `api.openai.com`, the nilbox proxy on the host intercepts it, swaps `OPENAI_KEY` for the real token, and forwards it. When a malicious payload tries to send keys to `attacker.evil.com`, the proxy either blocks the domain outright or sends only the dummy string — **the real token never leaves the host**.
-
-**Zero code changes required.** OpenClaw — or any other agent — runs unmodified inside the VM. It reads environment variables and makes API calls exactly as it would on bare metal. The token swap happens transparently at the host proxy layer, outside the guest. You don't patch your agent, your dependencies, or your scripts.
-
-The result:
-- No key rotation after a compromise — real tokens were never exposed
-- No bill shock — per-provider spending limits block runaway usage
-- No data leaks — the VM can only reach domains you approve
-
-See [Zero Token Architecture](docs/zero-token-architecture.md) for attack scenarios and defense layers.
-
-> **You don't need a Mac Mini to run OpenClaw.** That old laptop sitting at home is all you need — install nilbox and start running AI agents securely today.
+See the [Development Guide](docs/development.md) for full build instructions and release builds.
 
 ---
 
@@ -131,6 +193,8 @@ See [Zero Token Architecture](docs/zero-token-architecture.md) for attack scenar
 
 ### Security & Isolation
 
+- **Real VM isolation** — workloads run in a full virtual machine, not a container on the host kernel
+- **Zero-token proxy** — real API keys never enter the guest; the host proxy swaps tokens in-flight for trusted domains only
 - **Encrypted KeyStore** — SQLCipher + OS keyring (macOS Keychain / Linux secret-service / Windows native)
 - **Domain Gating** — Allow Once / Allow Always / Deny per domain at runtime
 - **DNS Blocklist** — Bloom-filter blocklist for VM outbound traffic
@@ -155,6 +219,17 @@ See [Zero Token Architecture](docs/zero-token-architecture.md) for attack scenar
 
 - **[App Store](https://store.nilbox.run/store)** — one-click install for apps and MCP servers inside the VM. Designed for users who aren't comfortable with Linux — no terminal required. If you're already at home on the command line, you can install anything directly via shell without the store.
 
+---
+
+## Why a VM, not a container?
+
+Most agent sandboxes are built for the cloud — they run containers on shared cluster infrastructure and lean on the host kernel for isolation. nilbox takes a different position:
+
+- **Real VM, not a shared kernel** — each workload gets a full virtual machine, so a container escape on the host kernel isn't on the table.
+- **Your desktop, not a cluster** — nilbox runs on the machine you already own. No Kubernetes, no cloud bill, no infra to operate.
+- **Keys that never enter the guest** — Zero Token Architecture means a compromised agent can't leak credentials it never had, rather than relying on egress filtering alone.
+- **No SDK to integrate** — sandboxes built as libraries require you to wrap your code in their API. nilbox runs existing code unmodified; the only setup is env vars. See [No Code Changes](#no-code-changes--just-set-env-vars).
+- **No terminal required** — the one-click Store lets non-developers install agents and MCP servers safely, while power users still get a full shell.
 
 ---
 
@@ -162,6 +237,7 @@ See [Zero Token Architecture](docs/zero-token-architecture.md) for attack scenar
 
 | Document | What's Covered |
 |----------|---------------|
+| [Documentation Site](https://docs.nilbox.run/docs/intro/) | Introduction, installation, agent setup, and guides (English / 한국어) |
 | [Development Guide](docs/development.md) | Project structure, tech stack, platform support, build instructions |
 | [Contributing](CONTRIBUTING.md) | Development setup, code guidelines, PR workflow, reporting issues |
 | [Zero Token Architecture](docs/zero-token-architecture.md) | Security model details, attack scenarios, defense layers, FAQ |
@@ -170,7 +246,7 @@ See [Zero Token Architecture](docs/zero-token-architecture.md) for attack scenar
 | [MCP Bridge](scripts/mcp/) | Connecting Claude Desktop to VM-hosted MCP servers |
 | [Playwright CDP](scripts/playwright-mcp-hello/) | Running Playwright MCP with Chrome CDP over VSOCK |
 | [nilbox-vmm](nilbox-vmm/) | macOS VMM using Apple Virtualization.framework (Swift) |
-| [nilbox-blocklist](nilbox/crates/nilbox-blocklist/README.md) | Bloom-filter DNS blocklist — build, update, and query blocklists (OISD, URLhaus) |
+| [nilbox-blocklist](crates/nilbox-blocklist/README.md) | Bloom-filter DNS blocklist — build, update, and query blocklists (OISD, URLhaus) |
 
 ---
 
