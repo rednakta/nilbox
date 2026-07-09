@@ -14,6 +14,7 @@
   <a href="#what-is-nilbox">What is nilbox</a> ·
   <a href="#who-nilbox-is-for">Who It's For</a> ·
   <a href="#zero-token-architecture">Zero Token</a> ·
+  <a href="#agent-firewall">Agent Firewall</a> ·
   <a href="#what-you-can-run">What You Can Run</a> ·
   <a href="#no-code-changes--just-set-env-vars">No Code Changes</a> ·
   <a href="#quick-start">Quick Start</a> ·
@@ -97,6 +98,10 @@ The real token lives only on the host, where the agent can never see it.
       └─────────────────────────────────────────────────────────────┘
 ```
 
+<p align="center">
+  <img src="docs/zero-token.png" width="800" alt="nilbox 스크린샷">
+</p>
+
 The moment the agent makes an API call, the nilbox host proxy intercepts the request and swaps the fake token for the real one — but only for trusted domains. The agent believes it holds a real token and gets a normal response.
 
 **Why it's safe even if leaked.** If an attacker extracts the token from the agent's environment, all they get is `OPENAI_API_KEY` — a meaningless string. When malicious code tries to send it to `attacker.evil.com`, the proxy blocks the domain or forwards only the dummy value. **The real token never leaves the host.**
@@ -107,6 +112,25 @@ The result:
 - **No data leaks** — the VM can only reach domains you approve
 
 See [Zero Token Architecture](docs/zero-token-architecture.md) for attack scenarios and defense layers.
+
+---
+
+## Agent Firewall
+
+An agent inside nilbox has **no direct network**. Every outbound request leaves the VM over VSOCK and passes through a host-side **firewall built for AI agents** — it sits between the agent and the internet, inspects each connection, and gates it against rules you control. The agent can't disable or route around it, because the firewall lives *outside* the guest.
+
+- **Default-deny egress** — the agent reaches only the destinations you allow; everything else is blocked.
+- **Domain gating with approval** — on a new destination, nilbox pauses the request and prompts you: **Allow Once / Allow Always / Deny**. Human-in-the-loop for anything unexpected.
+- **DNS blocklist** — known-malicious domains (OISD, URLhaus) are dropped automatically via a Bloom-filter blocklist.
+- **Credential firewall** — real API keys never cross the boundary; the proxy injects them only for trusted domains (see [Zero Token Architecture](#zero-token-architecture)). A compromised agent can't exfiltrate what it never held.
+- **Rate & spend limits** — per-provider token-usage caps (warn at 80%, block at 95%) stop a runaway or hijacked agent from draining your budget.
+- **Audit trail** — outbound activity and token usage are tracked, so you can see exactly what the agent tried to reach.
+
+This is **prompt-injection containment in practice**: even if an agent is fully compromised, it can only talk to destinations you approved, carrying dummy credentials, under spending caps — so a leak has nowhere to go.
+
+<p align="center">
+  <img src="docs/agent-firewall.png" width="800" alt="nilbox 스크린샷">
+</p>
 
 ---
 
@@ -193,6 +217,7 @@ See the [Development Guide](docs/development.md) for full build instructions and
 
 ### Security & Isolation
 
+- **[Agent Firewall](#agent-firewall)** — host-side, default-deny firewall for AI agents; gates every outbound action with allowlists, approval prompts, and audit trail
 - **Real VM isolation** — workloads run in a full virtual machine, not a container on the host kernel
 - **Zero-token proxy** — real API keys never enter the guest; the host proxy swaps tokens in-flight for trusted domains only
 - **Encrypted KeyStore** — SQLCipher + OS keyring (macOS Keychain / Linux secret-service / Windows native)
