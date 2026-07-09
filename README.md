@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3">
+  <img src="https://img.shields.io/badge/License-GPLv3%20%2F%20Commercial-blue.svg" alt="License: GPL v3 or Commercial">
   <img src="https://img.shields.io/badge/version-0.2.3-green.svg" alt="Version">
   <img src="https://img.shields.io/badge/macOS-supported-success?logo=apple" alt="macOS">
   <img src="https://img.shields.io/badge/Linux-supported-success?logo=linux&logoColor=white" alt="Linux">
@@ -258,7 +258,19 @@ Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for developmen
 
 ## License
 
-GNU General Public License v3.0 — see [LICENSE](LICENSE).
+nilbox is **dual-licensed**:
+
+- **Community Edition** — [GNU General Public License v3.0](LICENSE) (GPL-3.0-or-later).
+  Free and open source.
+- **Commercial License** — for embedding nilbox in a closed-source product or using it
+  without GPL copyleft obligations. See [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)
+  or contact **question@nilbox.run**.
+
+You may use nilbox under **either** license. You only need a commercial license if the
+GPL-3.0 terms do not work for your use case; internal use and evaluation are fully
+covered by the GPL-3.0.
+
+Contributions are accepted under the [Contributor License Agreement](CLA.md).
 
 ---
 

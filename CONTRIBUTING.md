@@ -114,7 +114,23 @@ Open an issue with the `enhancement` label. Describe:
 
 Contributors are recognized in release notes. Thank you for helping make nilbox better!
 
-## Contributing
+## Licensing & Contributor License Agreement (CLA)
 
-  All commits must be signed off with the Developer Certificate of Origin (DCO).
-  Use `git commit -s` to sign your commits.
+nilbox is **dual-licensed**: an open-source Community Edition under **GPL-3.0** and a
+separate **commercial license** (see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md)).
+So that contributions can be included under **both** licenses, all contributions are
+accepted under the [Contributor License Agreement (CLA)](CLA.md).
+
+By submitting a pull request you agree to the CLA. **You keep the copyright to your
+work** — the CLA only grants the maintainer the right to license your contribution
+under the GPL-3.0 and the commercial license.
+
+For your **first** contribution, add this line to your pull request description:
+
+> I have read and agree to the nilbox Contributor License Agreement.
+> Signed: &lt;Your Full Name&gt; &lt;your@email&gt;
+
+### Developer Certificate of Origin (DCO)
+
+All commits must also be signed off with the Developer Certificate of Origin (DCO).
+Use `git commit -s` to sign your commits.
