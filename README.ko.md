@@ -23,7 +23,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3">
+  <img src="https://img.shields.io/badge/License-GPLv3%20%2F%20Commercial-blue.svg" alt="License: GPL v3 or Commercial">
   <img src="https://img.shields.io/badge/version-0.2.3-green.svg" alt="Version">
   <img src="https://img.shields.io/badge/macOS-supported-success?logo=apple" alt="macOS">
   <img src="https://img.shields.io/badge/Linux-supported-success?logo=linux&logoColor=white" alt="Linux">
@@ -285,7 +285,18 @@ cd apps/nilbox && npm install && npm run tauri dev
 
 ## 라이선스
 
-GNU General Public License v3.0 — [LICENSE](LICENSE) 참조.
+nilbox는 **듀얼 라이선스**로 제공됩니다:
+
+- **커뮤니티 에디션** — [GNU General Public License v3.0](LICENSE) (GPL-3.0-or-later).
+  자유 오픈소스.
+- **상업용 라이선스** — nilbox를 클로즈드 소스 제품에 내장하거나 GPL 카피레프트
+  의무 없이 사용하려는 경우. [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md) 참조 또는
+  **question@nilbox.run** 로 문의.
+
+두 라이선스 중 **하나를 선택**해 사용할 수 있습니다. GPL-3.0 조건이 맞지 않는
+경우에만 상업용 라이선스가 필요하며, 사내 사용 및 평가는 GPL-3.0으로 모두 커버됩니다.
+
+기여는 [기여자 라이선스 계약(CLA)](CLA.md)에 따라 수락됩니다.
 
 ---
 
