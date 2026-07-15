@@ -195,6 +195,9 @@ impl FileProxy {
             FuseRequest::Remove { request_id, is_dir, path } => {
                 self.handle_remove(request_id, is_dir, &path).await
             }
+            FuseRequest::Rename { request_id, old_path, new_path } => {
+                self.handle_rename(request_id, &old_path, &new_path).await
+            }
             FuseRequest::PathQuery { request_id } => {
                 self.handle_path_query(request_id).await
             }
@@ -487,6 +490,28 @@ impl FileProxy {
         match result {
             Ok(()) => FuseResponse::Remove { request_id, status: StatusCode::Ok },
             Err(e) => FuseResponse::Remove { request_id, status: StatusCode::from(e.kind()) },
+        }
+    }
+
+    async fn handle_rename(&self, request_id: RequestId, old_path: &str, new_path: &str) -> FuseResponse {
+        if self.read_only {
+            return FuseResponse::Rename { request_id, status: StatusCode::ErrAccess };
+        }
+
+        let pm = self.path_manager.read().await;
+        let old_full = match pm.resolve_path(old_path) {
+            Ok(p) => p,
+            Err(_) => return FuseResponse::Rename { request_id, status: StatusCode::ErrNoent },
+        };
+        let new_full = match pm.validate_new_path(new_path) {
+            Ok(p) => p,
+            Err(_) => return FuseResponse::Rename { request_id, status: StatusCode::ErrSandboxed },
+        };
+        drop(pm);
+
+        match fs::rename(&old_full, &new_full) {
+            Ok(()) => FuseResponse::Rename { request_id, status: StatusCode::Ok },
+            Err(e) => FuseResponse::Rename { request_id, status: StatusCode::from(e.kind()) },
         }
     }
 
