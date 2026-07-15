@@ -251,6 +251,15 @@ impl RequestDispatcher {
         }
     }
 
+    pub async fn rename(&self, old_path: String, new_path: String) -> Result<(), DispatcherError> {
+        let request = FuseRequest::Rename { request_id: self.allocate_id(), old_path, new_path };
+        match self.send_request(request).await? {
+            FuseResponse::Rename { status, .. } if status == StatusCode::Ok => Ok(()),
+            FuseResponse::Rename { status, .. } => Err(DispatcherError::StatusError(status)),
+            _ => Err(DispatcherError::ProtocolError("Unexpected response".into())),
+        }
+    }
+
     pub async fn ping(&self) -> Result<(), DispatcherError> {
         let request = FuseRequest::Ping { request_id: self.allocate_id() };
         match self.send_request(request).await? {

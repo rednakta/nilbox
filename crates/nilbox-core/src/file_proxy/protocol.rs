@@ -132,6 +132,7 @@ pub enum FuseRequest {
     Stat { request_id: RequestId, path: String },
     Mkdir { request_id: RequestId, mode: u32, path: String },
     Remove { request_id: RequestId, is_dir: bool, path: String },
+    Rename { request_id: RequestId, old_path: String, new_path: String },
     PathQuery { request_id: RequestId },
     Ping { request_id: RequestId },
 }
@@ -147,6 +148,7 @@ impl FuseRequest {
             FuseRequest::Stat { request_id, .. } => *request_id,
             FuseRequest::Mkdir { request_id, .. } => *request_id,
             FuseRequest::Remove { request_id, .. } => *request_id,
+            FuseRequest::Rename { request_id, .. } => *request_id,
             FuseRequest::PathQuery { request_id } => *request_id,
             FuseRequest::Ping { request_id } => *request_id,
         }
@@ -164,6 +166,7 @@ pub enum FuseResponse {
     Stat { request_id: RequestId, status: StatusCode, attr: FileAttr },
     Mkdir { request_id: RequestId, status: StatusCode },
     Remove { request_id: RequestId, status: StatusCode },
+    Rename { request_id: RequestId, status: StatusCode },
     PathQuery { request_id: RequestId, status: StatusCode, state: u8, path: String },
     Pong { request_id: RequestId },
     // Host-initiated notifications
@@ -274,6 +277,14 @@ pub fn decode_request(src: &mut BytesMut) -> anyhow::Result<Option<FuseRequest>>
             let path = String::from_utf8(payload.split_to(path_len).to_vec())?;
             FuseRequest::Remove { request_id, is_dir, path }
         }
+        OpType::Rename => {
+            let request_id = payload.get_u64_le();
+            let old_len = payload.get_u16_le() as usize;
+            let old_path = String::from_utf8(payload.split_to(old_len).to_vec())?;
+            let new_len = payload.get_u16_le() as usize;
+            let new_path = String::from_utf8(payload.split_to(new_len).to_vec())?;
+            FuseRequest::Rename { request_id, old_path, new_path }
+        }
         OpType::PathQuery => {
             let request_id = payload.get_u64_le();
             FuseRequest::PathQuery { request_id }
@@ -348,6 +359,11 @@ pub fn encode_response(resp: &FuseResponse) -> BytesMut {
         }
         FuseResponse::Remove { request_id, status } => {
             op_type = OpType::Remove as u16;
+            payload.put_u64_le(*request_id);
+            payload.put_u16_le(*status as u16);
+        }
+        FuseResponse::Rename { request_id, status } => {
+            op_type = OpType::Rename as u16;
             payload.put_u64_le(*request_id);
             payload.put_u16_le(*status as u16);
         }

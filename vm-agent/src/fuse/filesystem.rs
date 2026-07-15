@@ -60,6 +60,18 @@ impl InodeMap {
             self.ino_to_path.remove(&ino);
         }
     }
+
+    /// Remap an inode from `old_path` to `new_path`, dropping any inode that
+    /// previously occupied the destination (overwrite case).
+    fn rename(&mut self, old_path: &str, new_path: &str) {
+        if let Some(dest_ino) = self.path_to_ino.remove(new_path) {
+            self.ino_to_path.remove(&dest_ino);
+        }
+        if let Some(ino) = self.path_to_ino.remove(old_path) {
+            self.ino_to_path.insert(ino, new_path.to_string());
+            self.path_to_ino.insert(new_path.to_string(), ino);
+        }
+    }
 }
 
 /// Local fh <-> remote fd mapping
@@ -643,6 +655,51 @@ impl Filesystem for HostFilesystem {
                     {
                         let mut inodes = inodes.lock().await;
                         inodes.remove(&path);
+                    }
+                    reply.ok();
+                }
+                Err(e) => { reply.error(Self::err_to_errno(&e)); }
+            }
+        });
+    }
+
+    fn rename(
+        &mut self, _req: &Request, parent: u64, name: &OsStr,
+        newparent: u64, newname: &OsStr, _flags: u32, reply: ReplyEmpty,
+    ) {
+        let dispatcher = self.dispatcher.clone();
+        let cache = self.cache.clone();
+        let inodes = self.inodes.clone();
+        let name = name.to_owned();
+        let newname = newname.to_owned();
+
+        self.rt.spawn(async move {
+            let (old_path, new_path) = {
+                let inodes = inodes.lock().await;
+                let parent_path = match inodes.get_path(parent) {
+                    Some(p) => p.clone(),
+                    None => { reply.error(ENOENT); return; }
+                };
+                let newparent_path = match inodes.get_path(newparent) {
+                    Some(p) => p.clone(),
+                    None => { reply.error(ENOENT); return; }
+                };
+                (
+                    Self::build_path(&parent_path, &name),
+                    Self::build_path(&newparent_path, &newname),
+                )
+            };
+
+            match dispatcher.rename(old_path.clone(), new_path.clone()).await {
+                Ok(()) => {
+                    {
+                        let mut c = cache.lock().await;
+                        c.invalidate_with_parent(&old_path);
+                        c.invalidate_with_parent(&new_path);
+                    }
+                    {
+                        let mut inodes = inodes.lock().await;
+                        inodes.rename(&old_path, &new_path);
                     }
                     reply.ok();
                 }
