@@ -103,6 +103,15 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
     const onInput = (event: Event) => {
       if (event.target !== textarea) return;
       const cur = textarea.value;
+      // Paste/drop are handled natively by xterm (which forwards via onData).
+      // Skip them here so the shim doesn't re-send and duplicate the content,
+      // but keep lastSent in sync so later diffs stay correct.
+      const inputType = (event as InputEvent).inputType;
+      if (inputType === "insertFromPaste" || inputType === "insertFromDrop") {
+        lastSent = cur;
+        event.stopPropagation();
+        return;
+      }
       if (xtermHandledKey || (term as unknown as { _keyPressHandled: boolean })._keyPressHandled) {
         lastSent = cur;
         xtermHandledKey = false;
