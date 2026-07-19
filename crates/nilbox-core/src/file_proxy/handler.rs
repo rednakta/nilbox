@@ -198,6 +198,9 @@ impl FileProxy {
             FuseRequest::Rename { request_id, old_path, new_path } => {
                 self.handle_rename(request_id, &old_path, &new_path).await
             }
+            FuseRequest::Truncate { request_id, path, size } => {
+                self.handle_truncate(request_id, &path, size).await
+            }
             FuseRequest::PathQuery { request_id } => {
                 self.handle_path_query(request_id).await
             }
@@ -325,8 +328,8 @@ impl FileProxy {
             return FuseResponse::Write { request_id, status: StatusCode::from(e.kind()), written: 0 };
         }
 
-        match open_file.file.write(&data) {
-            Ok(n) => FuseResponse::Write { request_id, status: StatusCode::Ok, written: n as u32 },
+        match open_file.file.write_all(&data) {
+            Ok(()) => FuseResponse::Write { request_id, status: StatusCode::Ok, written: data.len() as u32 },
             Err(e) => FuseResponse::Write { request_id, status: StatusCode::from(e.kind()), written: 0 },
         }
     }
@@ -512,6 +515,29 @@ impl FileProxy {
         match fs::rename(&old_full, &new_full) {
             Ok(()) => FuseResponse::Rename { request_id, status: StatusCode::Ok },
             Err(e) => FuseResponse::Rename { request_id, status: StatusCode::from(e.kind()) },
+        }
+    }
+
+    async fn handle_truncate(&self, request_id: RequestId, path: &str, size: u64) -> FuseResponse {
+        if self.read_only {
+            return FuseResponse::Truncate { request_id, status: StatusCode::ErrAccess };
+        }
+
+        let pm = self.path_manager.read().await;
+        let full_path = match pm.resolve_path(path) {
+            Ok(p) => p,
+            Err(_) => return FuseResponse::Truncate { request_id, status: StatusCode::ErrNoent },
+        };
+        drop(pm);
+
+        let file = match OpenOptions::new().write(true).open(&full_path) {
+            Ok(f) => f,
+            Err(e) => return FuseResponse::Truncate { request_id, status: StatusCode::from(e.kind()) },
+        };
+
+        match file.set_len(size) {
+            Ok(()) => FuseResponse::Truncate { request_id, status: StatusCode::Ok },
+            Err(e) => FuseResponse::Truncate { request_id, status: StatusCode::from(e.kind()) },
         }
     }
 

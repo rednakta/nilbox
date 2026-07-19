@@ -206,6 +206,15 @@ impl RequestDispatcher {
         }
     }
 
+    pub async fn truncate(&self, path: String, size: u64) -> Result<(), DispatcherError> {
+        let request = FuseRequest::Truncate { request_id: self.allocate_id(), path, size };
+        match self.send_request(request).await? {
+            FuseResponse::Truncate { status, .. } if status == StatusCode::Ok => Ok(()),
+            FuseResponse::Truncate { status, .. } => Err(DispatcherError::StatusError(status)),
+            _ => Err(DispatcherError::ProtocolError("Unexpected response".into())),
+        }
+    }
+
     pub async fn close(&self, fd: u64) -> Result<(), DispatcherError> {
         let request = FuseRequest::Close { request_id: self.allocate_id(), fd };
         match self.send_request(request).await? {

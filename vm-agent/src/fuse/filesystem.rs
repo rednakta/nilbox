@@ -717,7 +717,6 @@ impl Filesystem for HostFilesystem {
         _bkuptime: Option<SystemTime>, _flags: Option<u32>,
         reply: ReplyAttr,
     ) {
-        // For now, just return current attributes (truncate not yet supported)
         let dispatcher = self.dispatcher.clone();
         let cache = self.cache.clone();
         let inodes = self.inodes.clone();
@@ -730,6 +729,15 @@ impl Filesystem for HostFilesystem {
                     None => { reply.error(ENOENT); return; }
                 }
             };
+
+            if let Some(new_size) = size {
+                if let Err(e) = dispatcher.truncate(path.clone(), new_size).await {
+                    reply.error(Self::err_to_errno(&e));
+                    return;
+                }
+                let mut c = cache.lock().await;
+                c.invalidate(&path);
+            }
 
             match dispatcher.stat(path.clone()).await {
                 Ok(FuseResponse::Stat { file_type, mode, size: file_size, mtime, atime, ctime, .. }) => {

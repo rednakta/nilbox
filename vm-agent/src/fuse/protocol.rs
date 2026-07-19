@@ -172,6 +172,7 @@ pub enum FuseRequest {
     Mkdir { request_id: RequestId, mode: u32, path: String },
     Remove { request_id: RequestId, is_dir: bool, path: String },
     Rename { request_id: RequestId, old_path: String, new_path: String },
+    Truncate { request_id: RequestId, path: String, size: u64 },
     PathQuery { request_id: RequestId },
     Ping { request_id: RequestId },
 }
@@ -188,6 +189,7 @@ impl FuseRequest {
             FuseRequest::Mkdir { request_id, .. } => *request_id,
             FuseRequest::Remove { request_id, .. } => *request_id,
             FuseRequest::Rename { request_id, .. } => *request_id,
+            FuseRequest::Truncate { request_id, .. } => *request_id,
             FuseRequest::PathQuery { request_id } => *request_id,
             FuseRequest::Ping { request_id } => *request_id,
         }
@@ -204,6 +206,7 @@ impl FuseRequest {
             FuseRequest::Mkdir { .. } => OpType::Mkdir,
             FuseRequest::Remove { .. } => OpType::Remove,
             FuseRequest::Rename { .. } => OpType::Rename,
+            FuseRequest::Truncate { .. } => OpType::Truncate,
             FuseRequest::PathQuery { .. } => OpType::PathQuery,
             FuseRequest::Ping { .. } => OpType::Ping,
         }
@@ -222,6 +225,7 @@ pub enum FuseResponse {
     Mkdir { request_id: RequestId, status: StatusCode },
     Remove { request_id: RequestId, status: StatusCode },
     Rename { request_id: RequestId, status: StatusCode },
+    Truncate { request_id: RequestId, status: StatusCode },
     PathQuery { request_id: RequestId, status: StatusCode, state: u8, path: String },
     Pong { request_id: RequestId },
 }
@@ -238,6 +242,7 @@ impl FuseResponse {
             FuseResponse::Mkdir { request_id, .. } => *request_id,
             FuseResponse::Remove { request_id, .. } => *request_id,
             FuseResponse::Rename { request_id, .. } => *request_id,
+            FuseResponse::Truncate { request_id, .. } => *request_id,
             FuseResponse::PathQuery { request_id, .. } => *request_id,
             FuseResponse::Pong { request_id } => *request_id,
         }
@@ -254,6 +259,7 @@ impl FuseResponse {
             FuseResponse::Mkdir { status, .. } => *status,
             FuseResponse::Remove { status, .. } => *status,
             FuseResponse::Rename { status, .. } => *status,
+            FuseResponse::Truncate { status, .. } => *status,
             FuseResponse::PathQuery { status, .. } => *status,
             FuseResponse::Pong { .. } => StatusCode::Ok,
         }
@@ -351,6 +357,14 @@ pub fn encode_request(req: &FuseRequest) -> BytesMut {
             let new_bytes = new_path.as_bytes();
             payload.put_u16_le(new_bytes.len() as u16);
             payload.put_slice(new_bytes);
+        }
+        FuseRequest::Truncate { request_id, path, size } => {
+            op_type = OpType::Truncate as u16;
+            payload.put_u64_le(*request_id);
+            payload.put_u64_le(*size);
+            let path_bytes = path.as_bytes();
+            payload.put_u16_le(path_bytes.len() as u16);
+            payload.put_slice(path_bytes);
         }
         FuseRequest::PathQuery { request_id } => {
             op_type = OpType::PathQuery as u16;
@@ -461,6 +475,11 @@ pub fn decode_response(src: &mut BytesMut) -> anyhow::Result<Option<FuseMessage>
             let request_id = payload.get_u64_le();
             let status = StatusCode::try_from(payload.get_u16_le())?;
             FuseMessage::Response(FuseResponse::Rename { request_id, status })
+        }
+        OpType::Truncate => {
+            let request_id = payload.get_u64_le();
+            let status = StatusCode::try_from(payload.get_u16_le())?;
+            FuseMessage::Response(FuseResponse::Truncate { request_id, status })
         }
         OpType::PathQuery => {
             let request_id = payload.get_u64_le();
