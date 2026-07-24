@@ -186,6 +186,48 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
           e?.imeShimReset?.();
           return false;
         }
+        // Cmd+C copies the current xterm selection via the Clipboard API instead
+        // of relying on the browser's native "copy" event. Full-screen TUIs like
+        // the Claude Code CLI repaint constantly, which makes the native
+        // selection/copy event path unreliable in the Tauri webview. This copies
+        // explicitly whenever there is a selection, and otherwise lets the event
+        // fall through (e.g. so a bare Cmd+C with no selection is a no-op).
+        if (
+          ev.type === "keydown" &&
+          ev.metaKey &&
+          !ev.ctrlKey &&
+          !ev.altKey &&
+          ev.key.toLowerCase() === "c"
+        ) {
+          const e = termRefs.current.get(tabId);
+          const selection = e?.term.getSelection();
+          if (selection) {
+            navigator.clipboard.writeText(selection).catch(() => {});
+            return false;
+          }
+        }
+        return true;
+      });
+      // Claude Code CLI (and other remote-aware CLIs) copy to the clipboard by
+      // sending OSC 52 ("sent N chars via OSC 52") rather than relying on the
+      // terminal's native mouse selection, since a remote/VM shell has no direct
+      // access to the host clipboard. xterm.js does not implement OSC 52 itself
+      // (by design, for security), so without this handler the sequence is
+      // silently dropped and nothing gets copied. We only implement the "set"
+      // direction — clipboard *read* requests (Pd === "?") are ignored so a
+      // remote process can never exfiltrate host clipboard contents.
+      term.parser.registerOscHandler(52, (data: string) => {
+        const separatorIndex = data.indexOf(";");
+        const payload = separatorIndex === -1 ? "" : data.slice(separatorIndex + 1);
+        if (!payload || payload === "?") return true;
+        try {
+          const binary = atob(payload);
+          const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+          const text = new TextDecoder("utf-8").decode(bytes);
+          navigator.clipboard.writeText(text).catch(() => {});
+        } catch {
+          // Malformed base64 payload — ignore.
+        }
         return true;
       });
     }
