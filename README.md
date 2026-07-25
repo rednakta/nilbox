@@ -297,6 +297,10 @@ covered by the GPL-3.0.
 
 Contributions are accepted under the [Contributor License Agreement](CLA.md).
 
+Bundled third-party assets: the [D2Coding](https://github.com/naver/d2codingfont) monospace
+font (© NAVER Corp.) ships as a webfont under the SIL Open Font License 1.1 —
+see [apps/nilbox/src/assets/fonts/OFL.txt](apps/nilbox/src/assets/fonts/OFL.txt).
+
 ---
 
 <p align="center">

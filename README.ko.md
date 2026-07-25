@@ -298,6 +298,10 @@ nilbox는 **듀얼 라이선스**로 제공됩니다:
 
 기여는 [기여자 라이선스 계약(CLA)](CLA.md)에 따라 수락됩니다.
 
+번들된 서드파티 자산: [D2Coding](https://github.com/naver/d2codingfont) 고정폭 폰트(© NAVER Corp.)를
+웹폰트로 포함하며, SIL Open Font License 1.1을 따릅니다 —
+[apps/nilbox/src/assets/fonts/OFL.txt](apps/nilbox/src/assets/fonts/OFL.txt) 참조.
+
 ---
 
 <p align="center">

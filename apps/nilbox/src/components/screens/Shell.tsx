@@ -5,6 +5,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { openShell, writeShell, resizeShell, closeShell, listEnvEntries, EnvVarEntry, openOAuthUrl, listFunctionKeys, FunctionKeyRecord } from "../../lib/tauri";
 import { detectOAuthUrl, scanBufferForOAuthUrls } from "../../lib/oauthDetect";
+import { ensureMonoFontLoaded, monoFontSize, monoFontStack, onMonoFontChange } from "../../lib/monoFont";
 import "@xterm/xterm/css/xterm.css";
 
 interface Props {
@@ -32,8 +33,8 @@ const createTerminal = () =>
       cursor: "#6C5CE7",
       selectionBackground: "rgba(108, 92, 231, 0.3)",
     },
-    fontFamily: '"SF Mono", "Fira Code", Menlo, monospace',
-    fontSize: 13,
+    fontFamily: monoFontStack(),
+    fontSize: monoFontSize(),
     lineHeight: 1.4,
     cursorBlink: true,
   });
@@ -247,8 +248,32 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
       }
       attachImeShim(entry);
       entry.fit.fit();
+      // The bundled D2Coding webfont may still be loading on first mount; xterm
+      // sizes its grid from the fallback metrics until it is available, so refit
+      // once the real faces are in.
+      void ensureMonoFontLoaded().then(() => {
+        if (entry.div) entry.fit.fit();
+      });
     }
   };
+
+  // Re-measure every terminal when the mono font preferences (ligatures, size) change.
+  useEffect(() =>
+    onMonoFontChange(() => {
+      const stack = monoFontStack();
+      const size = monoFontSize();
+      void ensureMonoFontLoaded().then(() => {
+        for (const [, entry] of Array.from(termRefs.current.entries())) {
+          entry.term.options.fontFamily = stack;
+          entry.term.options.fontSize = size;
+          if (!entry.div) continue;
+          entry.fit.fit();
+          if (entry.sessionId != null) {
+            resizeShell(entry.sessionId, entry.term.cols, entry.term.rows).catch(() => {});
+          }
+        }
+      });
+    }), []);
 
   const connectSession = async (tabId: number, installUrl?: string) => {
     if (!vmId) return;
@@ -1064,7 +1089,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
                 fontSize: 28,
                 color: "var(--text-muted)",
                 opacity: 0.25,
-                fontFamily: '"SF Mono", "Fira Code", Menlo, monospace',
+                fontFamily: "var(--font-mono)",
                 lineHeight: 1,
                 letterSpacing: "-0.02em",
               }}
