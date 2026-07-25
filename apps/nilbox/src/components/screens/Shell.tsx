@@ -170,23 +170,7 @@ export const Shell: React.FC<Props> = ({ vmId, sshReady = false, installUrl, onI
       const fit = new FitAddon();
       term.loadAddon(fit);
       termRefs.current.set(tabId, { term, fit, div: null });
-      // Esc clears the current shell input line (sends Ctrl+U) — matches Claude
-      // Code CLI muscle memory. Returning false stops xterm from forwarding the
-      // raw \x1b. Skipped during IME composition so the IME's own cancel works.
       term.attachCustomKeyEventHandler((ev) => {
-        if (
-          ev.type === "keydown" &&
-          ev.key === "Escape" &&
-          !ev.isComposing &&
-          ev.keyCode !== 229
-        ) {
-          const e = termRefs.current.get(tabId);
-          if (e?.sessionId != null) {
-            writeShell(e.sessionId, [0x15]).catch(() => {});
-          }
-          e?.imeShimReset?.();
-          return false;
-        }
         // Cmd+C copies the current xterm selection via the Clipboard API instead
         // of relying on the browser's native "copy" event. Full-screen TUIs like
         // the Claude Code CLI repaint constantly, which makes the native
