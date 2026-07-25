@@ -1,3 +1,5 @@
+@import './fonts.css';
+
 /* nilbox Dark Palette — Green/Cyan Theme */
 :root {
   /* Backgrounds (dark to light) */
@@ -54,7 +56,9 @@
 
   /* Typography */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', "SF Mono", "Fira Code", Menlo, monospace;
+  --font-mono: 'D2Coding', 'Consolas', 'Menlo', 'Monaco', monospace;
+  /* Overridden at runtime from Settings (see lib/monoFont.ts) */
+  --font-mono-size: 13px;
 
   /* Layout dimensions */
   --activity-bar-w: 152px;
@@ -119,6 +123,11 @@
   --glass-highlight: rgba(0, 0, 0, 0.03);
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   --card-shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Opt-in programming ligatures — toggled from Settings (see lib/monoFont.ts) */
+:root[data-mono-ligature="on"] {
+  --font-mono: 'D2Coding Ligature', 'D2Coding', 'Consolas', 'Menlo', 'Monaco', monospace;
 }
 
 * {
@@ -206,6 +215,15 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--accent);
+}
+
+/* Code blocks, inline code and terminal output all use the mono stack */
+code,
+kbd,
+pre,
+samp {
+  font-family: var(--font-mono);
+  font-size: var(--font-mono-size);
 }
 
 ::-webkit-scrollbar {

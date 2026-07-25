@@ -1,0 +1,38 @@
+/*
+ * D2Coding (NAVER, OFL 1.1 — see ../assets/fonts/OFL.txt) is bundled as a
+ * webfont so the monospace stack does not depend on a host install. Two
+ * families ship: "D2Coding" and the programming-ligature variant
+ * "D2Coding Ligature", selected via the --font-mono override below.
+ */
+
+@font-face {
+  font-family: 'D2Coding';
+  src: url('../assets/fonts/D2Coding.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'D2Coding';
+  src: url('../assets/fonts/D2Coding-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'D2Coding Ligature';
+  src: url('../assets/fonts/D2CodingLigature.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'D2Coding Ligature';
+  src: url('../assets/fonts/D2CodingLigature-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}

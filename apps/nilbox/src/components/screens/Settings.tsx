@@ -18,6 +18,15 @@ import {
   ForceUpgradeInfo,
   VmInfo,
 } from "../../lib/tauri";
+import {
+  isMonoLigatureEnabled,
+  setMonoLigatureEnabled,
+  monoFontSize,
+  setMonoFontSize,
+  MONO_FONT_SIZE_MIN,
+  MONO_FONT_SIZE_MAX,
+  MONO_FONT_SIZE_DEFAULT,
+} from "../../lib/monoFont";
 
 interface SettingsProps {
   developerMode: boolean;
@@ -41,6 +50,14 @@ export const Settings: React.FC<SettingsProps> = ({ developerMode, onDeveloperMo
   const [cdpBrowser, setCdpBrowser] = useState<string>("chrome");
   const [cdpOpenMode, setCdpOpenMode] = useState<string>("auto");
   const [vmList, setVmList] = useState<VmInfo[]>([]);
+  const [monoLigature, setMonoLigature] = useState(isMonoLigatureEnabled);
+  const [fontSize, setFontSize] = useState(monoFontSize);
+
+  const changeFontSize = (size: number) => {
+    const next = Math.min(MONO_FONT_SIZE_MAX, Math.max(MONO_FONT_SIZE_MIN, size));
+    setFontSize(next);
+    setMonoFontSize(next);
+  };
 
   useEffect(() => {
     getUpdateSettings().then((s) => {
@@ -216,6 +233,146 @@ export const Settings: React.FC<SettingsProps> = ({ developerMode, onDeveloperMo
               {t("settings.sidebarIconText")}
             </button>
           </div>
+        </div>
+
+        {/* Monospace font size — applies to code text and the terminal */}
+        <div style={{
+          background: "var(--bg-elevated)",
+          borderRadius: 6,
+          padding: "10px 12px",
+          marginTop: 12,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)" }}>
+              {t("settings.monoFontSize")}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+              {t("settings.monoFontSizeDesc")}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={() => changeFontSize(fontSize - 1)}
+              disabled={fontSize <= MONO_FONT_SIZE_MIN}
+              title={t("settings.monoFontSizeSmaller")}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              −
+            </button>
+            <span style={{
+              minWidth: 46,
+              textAlign: "center",
+              fontSize: 12,
+              fontFamily: "var(--font-mono)",
+              color: "var(--text-primary)",
+            }}>
+              {fontSize}px
+            </span>
+            <button
+              onClick={() => changeFontSize(fontSize + 1)}
+              disabled={fontSize >= MONO_FONT_SIZE_MAX}
+              title={t("settings.monoFontSizeLarger")}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                color: "var(--text-primary)",
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              +
+            </button>
+            <button
+              onClick={() => changeFontSize(MONO_FONT_SIZE_DEFAULT)}
+              disabled={fontSize === MONO_FONT_SIZE_DEFAULT}
+              style={{
+                padding: "0 8px",
+                height: 26,
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                background: "var(--bg-surface)",
+                color: fontSize === MONO_FONT_SIZE_DEFAULT ? "var(--text-muted)" : "var(--text-secondary)",
+                fontSize: 11,
+              }}
+            >
+              {t("settings.monoFontSizeReset")}
+            </button>
+          </div>
+        </div>
+
+        {/* Monospace font — D2Coding is bundled; ligatures are opt-in */}
+        <div style={{
+          background: "var(--bg-elevated)",
+          borderRadius: 6,
+          padding: "10px 12px",
+          marginTop: 12,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)" }}>
+              {t("settings.monoLigature")}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+              {t("settings.monoLigatureDesc")}
+            </div>
+            {/* Preview reflects both the ligature choice and the size above */}
+            <div style={{
+              fontSize: "var(--font-mono-size)",
+              color: "var(--text-muted)",
+              marginTop: 6,
+              fontFamily: "var(--font-mono)",
+            }}>
+              {"=> != >= 한글 abc 0O1l"}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const next = !monoLigature;
+              setMonoLigature(next);
+              setMonoLigatureEnabled(next);
+            }}
+            style={{
+              width: 40,
+              minWidth: 40,
+              height: 22,
+              borderRadius: 11,
+              border: "none",
+              cursor: "pointer",
+              background: monoLigature ? "var(--accent)" : "var(--border)",
+              position: "relative",
+              transition: "background 0.2s",
+            }}
+          >
+            <div style={{
+              width: 16,
+              height: 16,
+              borderRadius: 8,
+              background: "white",
+              position: "absolute",
+              top: 3,
+              left: monoLigature ? 21 : 3,
+              transition: "left 0.2s",
+            }} />
+          </button>
         </div>
       </div>
 
